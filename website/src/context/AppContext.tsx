@@ -470,7 +470,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const savedRemember = localStorage.getItem("cinemax_remember_choice");
     if (savedRemember) {
-      setRememberChoice(JSON.parse(savedRemember));
+      try {
+        setRememberChoice(JSON.parse(savedRemember));
+      } catch {
+        // Corrupted/legacy value from an older build — drop it instead of
+        // crashing the whole app on mount.
+        localStorage.removeItem("cinemax_remember_choice");
+      }
     }
 
     const savedChoice = localStorage.getItem("cinemax_default_choice");

@@ -1661,6 +1661,7 @@ const CinemaxDashboard: React.FC = () => {
         onSelectMovie={handleMovieClick} 
         onNavigate={setCurrentView}
         onSearch={setSearchQuery}
+        hideLauncher={currentView === "live-chat" || currentView === "player"}
       />
 
       {/* MOVIE DETAILS MODAL — powers the Hero's "More Info" button with a

@@ -256,49 +256,34 @@ export function connectToChatStream(
 ): EventSource {
   const eventSource = new EventSource(`/api/chat/stream?clientId=${encodeURIComponent(clientId)}`);
 
-  eventSource.addEventListener("presence", (e) => {
-    onEvent("presence", JSON.parse(e.data));
-  });
+  // A malformed/partial payload from the server should never be able to take
+  // down the live chat UI (or, since onEvent ultimately feeds React state
+  // setters, the rest of the app). Parse defensively and just drop the event
+  // if it isn't valid JSON.
+  const safeOn = (eventName: string) => {
+    eventSource.addEventListener(eventName, (e: MessageEvent) => {
+      try {
+        onEvent(eventName, JSON.parse(e.data));
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(`[chat] Failed to parse "${eventName}" event`, err);
+      }
+    });
+  };
 
-  eventSource.addEventListener("typing", (e) => {
-    onEvent("typing", JSON.parse(e.data));
-  });
-
-  eventSource.addEventListener("global_message_created", (e) => {
-    onEvent("global_message_created", JSON.parse(e.data));
-  });
-
-  eventSource.addEventListener("global_message_updated", (e) => {
-    onEvent("global_message_updated", JSON.parse(e.data));
-  });
-
-  eventSource.addEventListener("global_message_deleted", (e) => {
-    onEvent("global_message_deleted", JSON.parse(e.data));
-  });
-
-  eventSource.addEventListener("direct_message_created", (e) => {
-    onEvent("direct_message_created", JSON.parse(e.data));
-  });
-
-  eventSource.addEventListener("direct_message_updated", (e) => {
-    onEvent("direct_message_updated", JSON.parse(e.data));
-  });
-
-  eventSource.addEventListener("direct_message_deleted", (e) => {
-    onEvent("direct_message_deleted", JSON.parse(e.data));
-  });
-
-  eventSource.addEventListener("message_reaction_updated", (e) => {
-    onEvent("message_reaction_updated", JSON.parse(e.data));
-  });
-
-  eventSource.addEventListener("chat_meta_updated", (e) => {
-    onEvent("chat_meta_updated", JSON.parse(e.data));
-  });
-
-  eventSource.addEventListener("activity", (e) => {
-    onEvent("activity", JSON.parse(e.data));
-  });
+  [
+    "presence",
+    "typing",
+    "global_message_created",
+    "global_message_updated",
+    "global_message_deleted",
+    "direct_message_created",
+    "direct_message_updated",
+    "direct_message_deleted",
+    "message_reaction_updated",
+    "chat_meta_updated",
+    "activity",
+  ].forEach(safeOn);
 
   if (onError) {
     eventSource.onerror = onError;

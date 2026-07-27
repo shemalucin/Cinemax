@@ -10,6 +10,11 @@ interface HomeAIAssistantProps {
   onSelectMovie: (movie: Movie) => void;
   onNavigate?: (view: string) => void;
   onSearch?: (query: string) => void;
+  /** When true, the floating launcher button is not rendered. Used on pages
+   * (e.g. Live Chat) that have their own bottom composer/UI the launcher
+   * would otherwise sit on top of. The panel itself still closes if it was
+   * left open when navigating into one of those pages. */
+  hideLauncher?: boolean;
 }
 
 
@@ -19,10 +24,17 @@ const HOME_QUICK_PROMPTS = [
   "Best movies trending this week?",
 ];
 
-export const HomeAIAssistant: React.FC<HomeAIAssistantProps> = ({ onSelectMovie, onNavigate, onSearch }) => {
+export const HomeAIAssistant: React.FC<HomeAIAssistantProps> = ({ onSelectMovie, onNavigate, onSearch, hideLauncher }) => {
   const { user, setSearchQuery, setCurrentView, appLanguage } = useApp();
   const isAdmin = user?.role === "admin";
   const [open, setOpen] = useState(false);
+
+  // Close the panel automatically if we navigate into a page that hides the
+  // launcher (e.g. Live Chat) while it was open, so it can't get stranded
+  // half-visible behind that page's own UI.
+  useEffect(() => {
+    if (hideLauncher) setOpen(false);
+  }, [hideLauncher]);
   const [hasAutoIntroduced, setHasAutoIntroduced] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([
@@ -350,6 +362,7 @@ export const HomeAIAssistant: React.FC<HomeAIAssistantProps> = ({ onSelectMovie,
 
   return (
     <>
+      {!hideLauncher && (
       <button
         id="home-ai-launcher"
         onClick={() => setOpen(true)}
@@ -367,8 +380,9 @@ export const HomeAIAssistant: React.FC<HomeAIAssistantProps> = ({ onSelectMovie,
           <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-rose-500 border-2 border-black animate-pulse" />
         )}
       </button>
+      )}
 
-      {open && (
+      {open && !hideLauncher && (
         <div
           id="home-ai-panel"
           className="fixed z-50 right-0 sm:right-5 bottom-0 sm:bottom-6 w-full sm:w-[400px] h-[85dvh] sm:h-[580px] max-h-[85dvh] flex flex-col rounded-t-3xl sm:rounded-3xl border border-white/10 bg-[#0a0a0a]/98 backdrop-blur-xl shadow-2xl overflow-hidden"

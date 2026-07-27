@@ -137,8 +137,8 @@ export const LiveChat: React.FC<LiveChatProps> = ({ variant = "sidebar" }) => {
         className="w-full flex-none flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/5 bg-gradient-to-r from-[#39FF14]/10 to-transparent cursor-pointer"
       >
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <MessageCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#39FF14]" />
-          <span className="font-sans font-bold text-[10px] sm:text-xs text-white">{t("liveChat")}</span>
+          <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#39FF14]" />
+          <span className="font-sans font-bold text-xs sm:text-sm text-white">{t("liveChat")}</span>
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#39FF14] opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#39FF14]" />
@@ -186,20 +186,20 @@ export const LiveChat: React.FC<LiveChatProps> = ({ variant = "sidebar" }) => {
             <button
               id="live-chat-tab-popular"
               onClick={() => setTab("popular")}
-              className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 text-[10px] sm:text-[11px] font-bold transition-colors cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold transition-colors cursor-pointer ${
                 tab === "popular" ? "text-[#39FF14] border-b-2 border-[#39FF14]" : "text-neutral-500 hover:text-neutral-300 border-b-2 border-transparent"
               }`}
             >
-              <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t("popular")}
+              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> {t("popular")}
             </button>
             <button
               id="live-chat-tab-inbox"
               onClick={() => setTab("inbox")}
-              className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 text-[10px] sm:text-[11px] font-bold transition-colors cursor-pointer relative ${
+              className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold transition-colors cursor-pointer relative ${
                 tab === "inbox" ? "text-[#39FF14] border-b-2 border-[#39FF14]" : "text-neutral-500 hover:text-neutral-300 border-b-2 border-transparent"
               }`}
             >
-              <InboxIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> {t("inbox")}
+              <InboxIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> {t("inbox")}
               {unreadTotal > 0 && <span className="absolute top-1 sm:top-1.5 right-[28%] h-1.5 w-1.5 rounded-full bg-rose-500" />}
             </button>
           </div>
@@ -394,9 +394,9 @@ const PopularTab: React.FC<{ isSignedIn: boolean; myId?: string; onSignInRequire
       <AvatarRenderer value={m.userAvatar} size={isReply ? 20 : 26} initials={m.userName?.[0]} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-1 sm:gap-1.5 flex-wrap">
-          <span className="text-[10px] sm:text-[11px] font-bold text-white truncate">{m.userName}</span>
-          {m.userId === myId && <span className="text-[8px] sm:text-[9px] text-[#39FF14] font-bold">You</span>}
-          <span className="text-[8px] sm:text-[9px] text-neutral-500">{timeAgo(m.createdAt)}</span>
+          <span className="text-[11px] sm:text-xs font-bold text-white truncate">{m.userName}</span>
+          {m.userId === myId && <span className="text-[9px] sm:text-[10px] text-[#39FF14] font-bold">You</span>}
+          <span className="text-[9px] sm:text-[10px] text-neutral-500">{timeAgo(m.createdAt)}</span>
         </div>
         {editingId === m.id ? (
           <div className="mt-1">
@@ -494,9 +494,15 @@ const PopularTab: React.FC<{ isSignedIn: boolean; myId?: string; onSignInRequire
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : topLevel.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-4">
-            <Users className="h-6 w-6 text-neutral-700" />
-            <p className="text-[11px] text-neutral-600">No messages yet. Be the first to say something!</p>
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
+            <div className="relative flex items-center justify-center h-14 w-14 rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20">
+              <div className="absolute inset-0 rounded-full bg-[#39FF14]/10 blur-lg" />
+              <MessageCircle className="relative h-6 w-6 text-[#39FF14]" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-neutral-200">No messages yet</p>
+              <p className="text-xs text-neutral-500 mt-0.5">Be the first to say something</p>
+            </div>
           </div>
         ) : (
           topLevel.map((m) => (
@@ -541,7 +547,7 @@ const PopularTab: React.FC<{ isSignedIn: boolean; myId?: string; onSignInRequire
                 onKeyDown={(e) => e.key === "Enter" && !sending && handleSend()}
                 placeholder={replyTo ? "Write a reply..." : "Say something to everyone..."}
                 maxLength={1000}
-                className="flex-1 bg-white/5 border border-white/10 focus:border-[#39FF14]/50 focus:outline-none rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs text-white placeholder:text-neutral-600 transition-colors"
+                className="flex-1 bg-white/5 border border-white/10 focus:border-[#39FF14]/50 focus:outline-none rounded-xl px-3 py-2 sm:py-2.5 text-xs sm:text-sm text-white placeholder:text-neutral-600 transition-colors"
               />
               <button
                 onClick={handleSend}
@@ -555,9 +561,9 @@ const PopularTab: React.FC<{ isSignedIn: boolean; myId?: string; onSignInRequire
         ) : (
           <button
             onClick={onSignInRequired}
-            className="w-full flex items-center justify-center gap-1.5 sm:gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 text-[10px] sm:text-[11px] font-bold py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 bg-[#39FF14]/10 hover:bg-[#39FF14]/15 border border-[#39FF14]/25 text-[#39FF14] text-xs sm:text-sm font-bold py-2.5 sm:py-3 rounded-xl transition-all cursor-pointer"
           >
-            <LogIn className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> <span className="hidden sm:inline">Sign in to join the conversation</span><span className="sm:hidden">Sign in</span>
+            <LogIn className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Sign in to join the conversation</span><span className="sm:hidden">Sign in to chat</span>
           </button>
         )}
       </div>
@@ -789,14 +795,17 @@ const InboxTab: React.FC<{
 
   if (!isSignedIn) {
     return (
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-2 sm:gap-3 text-center px-4 sm:px-6">
-        <InboxIcon className="h-6 w-6 sm:h-7 sm:w-7 text-neutral-700" />
-        <p className="text-[11px] sm:text-xs text-neutral-500">Sign in to send and receive private messages.</p>
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 text-center px-4 sm:px-6">
+        <div className="relative flex items-center justify-center h-14 w-14 rounded-full bg-[#39FF14]/10 border border-[#39FF14]/20">
+          <div className="absolute inset-0 rounded-full bg-[#39FF14]/10 blur-lg" />
+          <InboxIcon className="relative h-6 w-6 text-[#39FF14]" />
+        </div>
+        <p className="text-xs sm:text-sm text-neutral-400">Sign in to send and receive private messages</p>
         <button
           onClick={onSignInRequired}
-          className="flex items-center gap-1.5 sm:gap-2 bg-[#39FF14] text-black text-[10px] sm:text-[11px] font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl hover:brightness-110 transition-all cursor-pointer"
+          className="flex items-center gap-2 bg-[#39FF14] text-black text-xs sm:text-sm font-bold px-4 py-2 rounded-xl hover:brightness-110 transition-all cursor-pointer"
         >
-          <LogIn className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> Sign In
+          <LogIn className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Sign In
         </button>
       </div>
     );
@@ -822,8 +831,8 @@ const InboxTab: React.FC<{
             </div>
           ) : conversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-4 sm:px-6">
-              <InboxIcon className="h-5 w-5 sm:h-6 sm:w-6 text-neutral-700" />
-              <p className="text-[10px] sm:text-[11px] text-neutral-600">No conversations yet. Start one!</p>
+              <InboxIcon className="h-6 w-6 text-neutral-700" />
+              <p className="text-xs text-neutral-500">No conversations yet. Start one!</p>
             </div>
           ) : (
             conversations.map((c) => (
