@@ -541,3 +541,5 @@ export const HelpDeskPage: React.FC = () => {
     </div>
   );
 };
+
+export default HelpDeskPage;

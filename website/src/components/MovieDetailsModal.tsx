@@ -405,3 +405,5 @@ export const MovieDetailsModal = ({ movie, isOpen, onClose, onPlay, onWatchTrail
     </div>
   );
 };
+
+export default MovieDetailsModal;

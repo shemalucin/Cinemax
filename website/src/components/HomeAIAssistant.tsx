@@ -468,3 +468,5 @@ export const HomeAIAssistant: React.FC<HomeAIAssistantProps> = ({ onSelectMovie,
     </>
   );
 };
+
+export default HomeAIAssistant;

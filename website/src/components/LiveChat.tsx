@@ -112,19 +112,28 @@ export const LiveChat: React.FC<LiveChatProps> = ({ variant = "sidebar" }) => {
   const [tab, setTab] = useState<"popular" | "inbox">("popular");
   const [unreadTotal, setUnreadTotal] = useState(0);
   const [chatHeight, setChatHeight] = useState(isHome ? 400 : 300);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <div
       id="live-chat-panel"
-      className={`solid-card rounded-2xl sm:rounded-3xl overflow-hidden border border-white/5 live-chat-panel ${
+      className={`solid-card rounded-2xl sm:rounded-3xl overflow-hidden border border-white/5 live-chat-panel flex flex-col ${
         isHome ? "live-chat-home" : ""
-      } ${collapsed ? "flex-none" : ""}`}
-      style={{ height: collapsed ? 'auto' : `${chatHeight}px` }}
+      } ${collapsed ? "flex-none" : "flex-1"}`}
+      style={isHome ? { height: collapsed ? 'auto' : `${chatHeight}px` } : { height: collapsed ? 'auto' : '100%' }}
     >
       {/* Header */}
       <button
         id="live-chat-header"
-        onClick={() => setCollapsed((c) => !c)}
+        onClick={() => {
+          if (!isExpanded) {
+            setIsExpanded(true);
+            setChatHeight(700);
+          } else {
+            setIsExpanded(false);
+            setChatHeight(isHome ? 400 : 300);
+          }
+        }}
         className="w-full flex-none flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/5 bg-gradient-to-r from-[#39FF14]/10 to-transparent cursor-pointer"
       >
         <div className="flex items-center gap-1.5 sm:gap-2">
@@ -1070,3 +1079,5 @@ const InboxTab: React.FC<{
     </div>
   );
 };
+
+export default LiveChat;

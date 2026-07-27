@@ -56,3 +56,5 @@ export const AdminDestinationModal: React.FC<AdminDestinationModalProps> = ({
     </div>
   );
 };
+
+export default AdminDestinationModal;

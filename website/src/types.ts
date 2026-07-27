@@ -204,6 +204,20 @@ export interface ChatMessage {
   createdAt: string;
   mediaUrl?: string | null;
   mediaType?: "image" | "audio" | null;
+  editedAt?: string | null;
+  roomId?: string | null;
+  quoteMessageId?: string | null;
+  sharedMovie?: {
+    id: number;
+    title: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    vote_average: number;
+    media_type: "movie" | "tv";
+    genres?: string[];
+    overview?: string;
+  } | null;
+  reactions?: Record<string, string[]>;
 }
 
 export interface DirectMessage {
@@ -217,6 +231,21 @@ export interface DirectMessage {
   createdAt: string;
   mediaUrl?: string | null;
   mediaType?: "image" | "audio" | null;
+  editedAt?: string | null;
+  deliveredAt?: string | null;
+  seenAt?: string | null;
+  quoteMessageId?: string | null;
+  sharedMovie?: {
+    id: number;
+    title: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    vote_average: number;
+    media_type: "movie" | "tv";
+    genres?: string[];
+    overview?: string;
+  } | null;
+  reactions?: Record<string, string[]>;
 }
 
 export interface ChatConversation {

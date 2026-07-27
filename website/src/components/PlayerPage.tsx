@@ -190,7 +190,7 @@ export const PlayerPage: React.FC = () => {
     searchQuery,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "details" | "cast" | "reviews">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "details" | "cast" | "liveChat">("overview");
   const [playerAds, setPlayerAds] = useState<PublicAd[]>([]);
   const [currentSeason, setCurrentSeason] = useState(1);
   const [currentEpisode, setCurrentEpisode] = useState(1);
@@ -642,7 +642,7 @@ export const PlayerPage: React.FC = () => {
                   allow={EMBED_IFRAME_ALLOW}
                   allowFullScreen
                   referrerPolicy="origin"
-                  sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups"
+                  sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-pointer-lock"
                   title="Player"
                 />
               )}
@@ -758,7 +758,7 @@ export const PlayerPage: React.FC = () => {
             {/* Tabs */}
             <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(16,18,24,0.88),rgba(9,10,14,0.84))] px-5 pt-4 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.9)]">
               <div className="flex gap-6">
-                {(["overview", "details", "cast", "reviews"] as const).map((tab) => (
+                {(["overview", "details", "cast", "liveChat"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -768,7 +768,7 @@ export const PlayerPage: React.FC = () => {
                         : "text-neutral-500 hover:text-neutral-300"
                     }`}
                   >
-                    {tab}
+                    {tab === "liveChat" ? "Live Chat" : tab}
                     {activeTab === tab && (
                       <span className="absolute -bottom-px left-0 right-0 h-0.5 rounded-full bg-[#39FF14]" />
                     )}
@@ -931,29 +931,9 @@ export const PlayerPage: React.FC = () => {
               </div>
             )}
 
-            {activeTab === "reviews" && (
-              <div className="space-y-3 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(16,18,24,0.88),rgba(9,10,14,0.84))] p-5 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.9)]">
-                {reviews.slice(0, 5).map((r) => (
-                  <div
-                    key={r.id}
-                    className="rounded-xl border border-white/10 bg-white/[0.02] p-4"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-bold text-white">{r.author}</p>
-                      <p className="text-[11px] text-neutral-500">
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <p className="text-xs text-neutral-300 leading-relaxed line-clamp-6">
-                      {r.content}
-                    </p>
-                  </div>
-                ))}
-                {reviews.length === 0 && (
-                  <p className="text-sm text-neutral-500 text-center py-6">
-                    No reviews yet.
-                  </p>
-                )}
+            {activeTab === "liveChat" && (
+              <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(16,18,24,0.88),rgba(9,10,14,0.84))] p-5 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.9)]">
+                <LiveChat variant="sidebar" />
               </div>
             )}
 
@@ -972,17 +952,6 @@ export const PlayerPage: React.FC = () => {
               movies={similarMovies}
               onSelect={(m) => transitionToTitle(m, { smoothScroll: true })}
             />
-            <div className="rounded-2xl border border-white/10 bg-[#0d0d0f] overflow-hidden">
-              <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  Live Chat
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#39FF14] animate-pulse" />
-                </h3>
-              </div>
-              <div className="max-h-[360px] overflow-hidden">
-                <LiveChat variant="sidebar" />
-              </div>
-            </div>
           </div>
         </div>
 

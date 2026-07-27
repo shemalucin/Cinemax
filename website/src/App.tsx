@@ -11,7 +11,6 @@ import { PipPlayer } from "./components/PipPlayer";
 import { AvatarRenderer } from "./components/AnimatedAvatar";
 import { LandingPage } from "./components/LandingPage";
 import { CinemaxLogo } from "./components/CinemaxLogo";
-import { CinemaxTypingLogo } from "./components/CinemaxTypingLogo";
 import { MobileBottomNav } from "./components/MobileBottomNav";
 import { InstallAppButton } from "./components/InstallAppButton";
 import { Footer } from "./components/Footer";
@@ -21,22 +20,22 @@ import { CardSizeSelector } from "./components/CardSizeSelector";
 // contains what's needed to paint the first screen. Each becomes its own
 // lazily-fetched chunk, downloaded only when the user actually navigates
 // there or opens that modal — this is what cuts the initial JS payload down.
-const PlayerPage = lazy(() => import("./components/PlayerPage").then(m => ({ default: m.PlayerPage })));
-const ProfilePage = lazy(() => import("./components/ProfilePage").then(m => ({ default: m.ProfilePage })));
-const DownloadsPage = lazy(() => import("./components/DownloadsPage").then(m => ({ default: m.DownloadsPage })));
-const HelpDeskPage = lazy(() => import("./components/HelpDeskPage").then(m => ({ default: m.HelpDeskPage })));
-const AuthModal = lazy(() => import("./components/AuthModal").then(m => ({ default: m.AuthModal })));
-const NotificationCenter = lazy(() => import("./components/NotificationCenter").then(m => ({ default: m.NotificationCenter })));
-const AboutPage = lazy(() => import("./components/AboutPage").then(m => ({ default: m.AboutPage })));
-const MoviesPage = lazy(() => import("./components/MoviesPage").then(m => ({ default: m.MoviesPage })));
-const TVShowsPage = lazy(() => import("./components/TVShowsPage").then(m => ({ default: m.TVShowsPage })));
-const ShortsPage = lazy(() => import("./components/ShortsPage").then(m => ({ default: m.ShortsPage })));
-const GensPage = lazy(() => import("./components/GensPage").then(m => ({ default: m.GensPage })));
-const HomeAIAssistant = lazy(() => import("./components/HomeAIAssistant").then(m => ({ default: m.HomeAIAssistant })));
-const MovieDetailsModal = lazy(() => import("./components/MovieDetailsModal").then(m => ({ default: m.MovieDetailsModal })));
-const LiveChat = lazy(() => import("./components/LiveChat").then(m => ({ default: m.LiveChat })));
-const AdminDestinationModal = lazy(() => import("./components/AdminDestinationModal").then(m => ({ default: m.AdminDestinationModal })));
-const OnboardingPreferences = lazy(() => import("./components/OnboardingPreferences").then(m => ({ default: m.OnboardingPreferences })));
+const PlayerPage = lazy(() => import("./components/PlayerPage"));
+const ProfilePage = lazy(() => import("./components/ProfilePage"));
+const DownloadsPage = lazy(() => import("./components/DownloadsPage"));
+const HelpDeskPage = lazy(() => import("./components/HelpDeskPage"));
+const AuthModal = lazy(() => import("./components/AuthModal"));
+const NotificationCenter = lazy(() => import("./components/NotificationCenter"));
+const AboutPage = lazy(() => import("./components/AboutPage"));
+const MoviesPage = lazy(() => import("./components/MoviesPage"));
+const TVShowsPage = lazy(() => import("./components/TVShowsPage"));
+const ShortsPage = lazy(() => import("./components/ShortsPage"));
+const GensPage = lazy(() => import("./components/GensPage"));
+const HomeAIAssistant = lazy(() => import("./components/HomeAIAssistant"));
+const MovieDetailsModal = lazy(() => import("./components/MovieDetailsModal"));
+const LiveChatPage = lazy(() => import("./components/LiveChatPage"));
+const AdminDestinationModal = lazy(() => import("./components/AdminDestinationModal"));
+const OnboardingPreferences = lazy(() => import("./components/OnboardingPreferences"));
 
 // Minimal, brand-colored fallback shown only on the very first fetch of a
 // lazy chunk (subsequent visits are served from the browser cache, so this
@@ -65,11 +64,11 @@ import {
   Info, 
   Bookmark, 
   Heart, 
-  History as HistoryIcon,
+  Clock as HistoryIcon,
   Download,
   Tv,
   ChevronRight,
-  ListPlus,
+  Plus as ListPlus,
   Lock,
   Tag,
   X as XIcon,
@@ -77,7 +76,7 @@ import {
   Globe,
   Film,
   Sparkles,
-  Bot
+  MessageSquare as MessageCircle
 } from "lucide-react";
 
 // Pre-configured "Supergirl" Featured Hero Movie matching references
@@ -134,7 +133,6 @@ const CinemaxDashboard: React.FC = () => {
     defaultWatchChoice,
     addToWatchlist,
     unreadCount,
-    authLoading,
     requireSignInPrompt,
     enterAsGuest,
     isGuest,
@@ -150,9 +148,12 @@ const CinemaxDashboard: React.FC = () => {
     goToAdminPanel,
     dismissAdminToWebsite,
     siteConfig,
+    premiumLiveChatOpen,
+    setPremiumLiveChatOpen,
   } = useApp();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [allGenres, setAllGenres] = useState<Array<{ id: number; name: string }>>([]);
@@ -183,14 +184,6 @@ const CinemaxDashboard: React.FC = () => {
   // from actually starting playback.
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [detailsModalMovie, setDetailsModalMovie] = useState<Movie | null>(null);
-
-  // Splash screen states
-  const [showSplash, setShowSplash] = useState(true);
-  const [fadeSplash, setFadeSplash] = useState(false);
-
-  // Post-login typing animation state
-  const [showTypingLogo, setShowTypingLogo] = useState(false);
-  const [hasShownTypingLogo, setHasShownTypingLogo] = useState(false);
 
   // TMDB Lists state
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
@@ -360,40 +353,6 @@ const CinemaxDashboard: React.FC = () => {
       cancelled = true;
     };
   }, [user?.onboarding?.favoriteGenres, siteConfig.hiddenMovieIds]);
-
-  // One-time movie-focused splash screen timer - logo visible for 4 seconds
-  useEffect(() => {
-    const fadeTimer = setTimeout(() => {
-      setFadeSplash(true);
-    }, 3500);
-
-    const unmountTimer = setTimeout(() => {
-      setShowSplash(false);
-    }, 4000);
-
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(unmountTimer);
-    };
-  }, []);
-
-  // Show typing animation after user logs in (only once per session)
-  useEffect(() => {
-    // Only trigger if user is logged in, hasn't seen the animation yet, and splash is done
-    if (user && !hasShownTypingLogo && !showSplash) {
-      // Small delay to ensure smooth transition
-      const timer = setTimeout(() => {
-        setShowTypingLogo(true);
-        setHasShownTypingLogo(true);
-      }, 300);
-
-      return () => clearTimeout(timer);
-    }
-  }, [user, hasShownTypingLogo, showSplash]);
-
-  const handleTypingComplete = () => {
-    setShowTypingLogo(false);
-  };
 
   // Hero rotation — admin-featured titles, or curated Supergirl + trending fallback
   const heroMovies =
@@ -850,44 +809,6 @@ const CinemaxDashboard: React.FC = () => {
     );
   };
 
-  const splashScreen = (
-    <div
-      id="splash-loader-screen"
-      className={`fixed inset-0 z-[10000] bg-[#121418] on-dark-bg flex flex-col items-center justify-center transition-opacity duration-500 ease-out ${fadeSplash ? "opacity-0 pointer-events-none" : "opacity-100"}`}
-    >
-      <div className="flex flex-col items-center gap-6 max-w-sm px-6 text-center">
-        <div className="h-20 w-20 rounded-3xl logo-mark flex items-center justify-center">
-          <svg
-            className="h-10 w-10 text-black"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2 2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2Z" />
-            <path d="M2 7h20" />
-            <path d="m14 2-4 5" />
-            <path d="m8 2-4 5" />
-            <path d="m20 2-4 5" />
-            <path d="M10 11H7v7h3V11Z" />
-            <path d="M17 11h-3v7h3V11Z" />
-          </svg>
-        </div>
-
-        <div className="space-y-1.5">
-          <span className="text-2xl font-black tracking-tighter flex items-center justify-center select-none font-sans">
-            <span className="brand-cinema">CINEMA</span><span className="brand-x">X</span>
-          </span>
-          <p className="text-[10px] text-neutral-500 font-mono tracking-widest uppercase font-black">
-            STRICTLY MOVIES & SERIES ONLY
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-
   // Minimal branded header shown above Help/About when browsed pre-login,
   // so those pages don't feel orphaned on a blank background. Clicking the
   // logo returns to the marketing landing page.
@@ -902,18 +823,6 @@ const CinemaxDashboard: React.FC = () => {
       </button>
     </header>
   );
-
-  // Splash always shows first (brand moment + gives the session check time to
-  // resolve). Only once it's done do we know whether to show the marketing
-  // landing page (unauthenticated) or the real dashboard (authenticated).
-  if (showSplash || authLoading) {
-    return splashScreen;
-  }
-
-  // Show typing animation after login (only once per session)
-  if (showTypingLogo) {
-    return <CinemaxTypingLogo onComplete={handleTypingComplete} />;
-  }
 
   const inMaintenance = siteConfig.maintenanceMode && user?.role !== "admin";
   if (inMaintenance) {
@@ -1014,13 +923,18 @@ const CinemaxDashboard: React.FC = () => {
       {/* Background Radial Glow Gradient from theme */}
       <div className="bg-gradient-radial-overlay" />
 
-      {/* Left Sidebar Menu */}
-      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+      {/* Left Sidebar Menu — Live Chat is a full-bleed immersive view, same treatment as the player */}
+      {currentView !== "live-chat" && (
+        <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} isCollapsed={sidebarCollapsed} setIsCollapsed={setSidebarCollapsed} />
+      )}
 
       {/* Main Content Area Container */}
-      <div id="main-content-panel" className="lg:pl-56 flex flex-col min-h-screen">
+      <div id="main-content-panel" className={`flex flex-col min-h-screen transition-all duration-300 ${
+        currentView === "live-chat" ? "" : sidebarCollapsed ? "lg:pl-16" : "lg:pl-56"
+      }`}>
         
-        {/* Top Header Navbar with frosted blur */}
+        {/* Top Header Navbar with frosted blur — hidden for Live Chat, which renders its own full-screen header */}
+        {currentView !== "live-chat" && (
         <header id="top-navbar" className="h-16 sm:h-20 glass-navbar sticky top-0 z-40 px-3 sm:px-4 lg:px-8 flex items-center justify-between gap-2 sm:gap-4">
           
           {/* Left Section: Mobile menu, Search, Voice Agent, Download App */}
@@ -1195,6 +1109,20 @@ const CinemaxDashboard: React.FC = () => {
               </button>
             )}
 
+            {/* Live Chat button */}
+            <button
+              id="live-chat-btn"
+              aria-label="Open Live Chat"
+              onClick={() => setCurrentView("live-chat")}
+              className="p-2 sm:p-2.5 rounded-2xl border border-white/10 hover:border-[#39FF14]/20 bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-all relative cursor-pointer group"
+            >
+              <MessageCircle className="h-4 w-4 group-hover:text-[#39FF14] transition-colors" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#39FF14] opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-[#39FF14]" />
+              </span>
+            </button>
+
             {/* Notification bell — locked for guests */}
             <div className="relative">
               <button
@@ -1236,9 +1164,10 @@ const CinemaxDashboard: React.FC = () => {
             )}
           </div>
         </header>
+        )}
 
         {/* Dynamic Display Rendering Area */}
-        <main id="dashboard-main-content" className="flex-1 pb-24 lg:pb-0">
+        <main id="dashboard-main-content" className={currentView === "live-chat" ? "flex-1 min-h-0" : "flex-1 pb-24 lg:pb-0"}>
 
           {/* Player always takes priority — search overlay was blocking playback */}
           {currentView === "player" ? (
@@ -1494,9 +1423,7 @@ const CinemaxDashboard: React.FC = () => {
                       </div>
                     </section>
 
-                    <section id="home-live-chat" className="max-w-3xl">
-                      <LiveChat variant="home" />
-                    </section>
+      
                   </div>
                 </div>
               )}
@@ -1513,6 +1440,9 @@ const CinemaxDashboard: React.FC = () => {
 
               {/* VIEW: TV SHOWS GRID */}
               {currentView === "tv" && <TVShowsPage onShowClick={handleMovieClick} />}
+
+              {/* VIEW: LIVE CHAT */}
+              {currentView === "live-chat" && <LiveChatPage sidebarCollapsed={sidebarCollapsed} />}
 
               {/* VIEW: MY LIST / WATCHLIST */}
               {currentView === "mylist" && (
@@ -1762,7 +1692,7 @@ const CinemaxDashboard: React.FC = () => {
         onWebsite={dismissAdminToWebsite}
       />
 
-      {currentView !== "player" && <MobileBottomNav />}
+      {currentView !== "player" && currentView !== "live-chat" && <MobileBottomNav />}
       </Suspense>
     </div>
   );

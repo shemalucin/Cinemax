@@ -115,6 +115,18 @@ interface AppContextType {
   setPipEpisode: (episode: number) => void;
   pipIsPlaying: boolean;
   setPipIsPlaying: (isPlaying: boolean) => void;
+  liveChatOpen: boolean;
+  setLiveChatOpen: (open: boolean) => void;
+  liveChatMinimized: boolean;
+  setLiveChatMinimized: (minimized: boolean) => void;
+  liveChatFullscreen: boolean;
+  setLiveChatFullscreen: (fullscreen: boolean) => void;
+  liveChatPopout: boolean;
+  setLiveChatPopout: (popout: boolean) => void;
+  openLiveChat: () => void;
+  closeLiveChat: () => void;
+  premiumLiveChatOpen: boolean;
+  setPremiumLiveChatOpen: (open: boolean) => void;
   t: (key: string) => string;
   appLanguage: AppLang;
   setAppLanguage: (lang: AppLang) => void;
@@ -190,6 +202,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [pipSeason, setPipSeason] = useState<number>(1);
   const [pipEpisode, setPipEpisode] = useState<number>(1);
   const [pipIsPlaying, setPipIsPlaying] = useState<boolean>(false);
+  const [liveChatOpen, setLiveChatOpen] = useState<boolean>(false);
+  const [liveChatMinimized, setLiveChatMinimized] = useState<boolean>(false);
+  const [liveChatFullscreen, setLiveChatFullscreen] = useState<boolean>(false);
+  const [liveChatPopout, setLiveChatPopout] = useState<boolean>(false);
+  const [premiumLiveChatOpen, setPremiumLiveChatOpen] = useState<boolean>(false);
 
   // Theme state with dark/light mode support
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -426,8 +443,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Check for an existing session on load
   useEffect(() => {
     (async () => {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 5000);
       try {
-        const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+        const res = await fetch(`${API_BASE}/api/auth/me`, {
+          credentials: "include",
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
           const mapped = mapServerUser(data.user);
@@ -441,6 +463,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch {
         setUser(null);
       } finally {
+        clearTimeout(timeoutId);
         setAuthLoading(false);
       }
     })();
@@ -794,6 +817,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (user && !isGuest) return;
     setAuthError(null);
     openAuthModal("signin");
+  };
+
+  const openLiveChat = () => {
+    setLiveChatOpen(true);
+    setLiveChatMinimized(false);
+  };
+
+  const closeLiveChat = () => {
+    setLiveChatOpen(false);
+    setLiveChatMinimized(false);
+    setLiveChatFullscreen(false);
+    setLiveChatPopout(false);
   };
 
   const addToFavorites = (id: number) => {
@@ -1434,6 +1469,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPipEpisode,
         pipIsPlaying,
         setPipIsPlaying,
+        liveChatOpen,
+        setLiveChatOpen,
+        liveChatMinimized,
+        setLiveChatMinimized,
+        liveChatFullscreen,
+        setLiveChatFullscreen,
+        liveChatPopout,
+        setLiveChatPopout,
+        openLiveChat,
+        closeLiveChat,
+        premiumLiveChatOpen,
+        setPremiumLiveChatOpen,
         t,
         appLanguage,
         setAppLanguage,

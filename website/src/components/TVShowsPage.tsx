@@ -272,3 +272,5 @@ export const TVShowsPage = ({ onShowClick }: TVShowsPageProps) => {
     </div>
   );
 };
+
+export default TVShowsPage;

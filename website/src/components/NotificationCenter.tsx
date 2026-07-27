@@ -123,3 +123,5 @@ export const NotificationCenter: React.FC<{ isOpen: boolean; onClose: () => void
     </div>
   );
 };
+
+export default NotificationCenter;

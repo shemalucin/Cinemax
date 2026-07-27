@@ -655,3 +655,5 @@ const ShortSlide = React.forwardRef<HTMLDivElement, ShortSlideProps>(
   }
 );
 ShortSlide.displayName = "ShortSlide";
+
+export default ShortsPage;

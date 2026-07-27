@@ -337,3 +337,5 @@ export const GensPage: React.FC<GensPageProps> = ({ onMovieClick }) => {
     </div>
   );
 };
+
+export default GensPage;

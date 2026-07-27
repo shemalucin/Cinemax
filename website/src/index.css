@@ -151,7 +151,10 @@ html.light .bg-gradient-radial-overlay {
 
 /* Premium accent chip — used for "Ad-Free" / plan badges across the header */
 .premium-chip {
-  display: inline-flex;
+  /* display is controlled by Tailwind's "hidden md:inline-flex" utility on the
+     element itself — do not set display here, or it wins the cascade tie
+     against ".hidden" (equal specificity, declared later) and the chip stays
+     visible on mobile, overflowing the header. */
   align-items: center;
   gap: 0.375rem;
   padding: 0.5rem 0.9rem;

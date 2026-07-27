@@ -330,3 +330,5 @@ const GenreRow: React.FC<{ genreId: number; name: string; onSeeAll: () => void; 
     </div>
   );
 };
+
+export default MoviesPage;

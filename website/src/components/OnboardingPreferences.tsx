@@ -243,3 +243,5 @@ export const OnboardingPreferences: React.FC<OnboardingPreferencesProps> = ({
     </div>
   );
 };
+
+export default OnboardingPreferences;
