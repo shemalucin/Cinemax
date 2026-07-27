@@ -1,7 +1,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { Readable } from "stream";
-import db, { DbDirectMessage } from "../lib/db";
+import db, { DbChatMessage, DbDirectMessage, DbSharedMovieCard } from "../lib/db";
 import {
   publicUser,
   isValidEmail,
@@ -34,6 +34,19 @@ import {
   logActivity,
 } from "../lib/auth";
 import { sendOtpEmail, isMailerConfigured, sendSignupVerificationEmail, sendPasswordResetEmail, getMailerStatus } from "../lib/mailer";
+import {
+  broadcastChatEvent,
+  clearPresence,
+  clearTypingForActor,
+  getActivityFeed,
+  getPresenceEntries,
+  getTypingEntries,
+  pushChatActivity,
+  registerChatClient,
+  setTyping,
+  unregisterChatClient,
+  upsertPresence,
+} from "../lib/chatRealtime";
 
 const LIST_STORAGE_LIMIT_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 const DOWNLOAD_STORAGE_LIMIT_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
@@ -1270,7 +1283,51 @@ authRouter.delete("/api/watch-history", requireAuth, (req: AuthedRequest, res) =
 // plenty responsive at this app's scale.
 // ---------------------------------------------------------------------------
 
+const CHAT_ROOMS = [
+  { id: "action", label: "Action" },
+  { id: "horror", label: "Horror" },
+  { id: "comedy", label: "Comedy" },
+  { id: "anime", label: "Anime" },
+  { id: "marvel", label: "Marvel" },
+  { id: "dc", label: "DC" },
+  { id: "tv-shows", label: "TV Shows" },
+  { id: "sci-fi", label: "Sci-Fi" },
+  { id: "romance", label: "Romance" },
+  { id: "african-movies", label: "African Movies" },
+] as const;
+
+function normalizeSharedMovie(raw: any): DbSharedMovieCard | null {
+  if (!raw || typeof raw !== "object" || !raw.id || !raw.title) return null;
+  return {
+    id: Number(raw.id),
+    title: String(raw.title),
+    poster_path: raw.poster_path ? String(raw.poster_path) : null,
+    backdrop_path: raw.backdrop_path ? String(raw.backdrop_path) : null,
+    vote_average: Number(raw.vote_average || 0),
+    media_type: raw.media_type === "tv" ? "tv" : "movie",
+    genres: Array.isArray(raw.genres) ? raw.genres.map((g) => String(g)) : [],
+    overview: raw.overview ? String(raw.overview) : undefined,
+  };
+}
+
+function normalizedReactions(raw: any): Record<string, string[]> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, string[]> = {};
+  for (const [emoji, users] of Object.entries(raw)) {
+    out[emoji] = Array.isArray(users) ? users.map((u) => String(u)) : [];
+  }
+  return out;
+}
+
+function toggleReaction(reactions: Record<string, string[]>, emoji: string, actorId: string) {
+  const current = reactions[emoji] || [];
+  const exists = current.includes(actorId);
+  reactions[emoji] = exists ? current.filter((id) => id !== actorId) : [...current, actorId];
+  if (reactions[emoji].length === 0) delete reactions[emoji];
+}
+
 function toPublicChatMessage(m: (typeof db.data.chat_messages)[number], viewerId?: string) {
+  const reactions = normalizedReactions(m.reactions);
   return {
     id: m.id,
     userId: m.user_id,
@@ -1283,10 +1340,16 @@ function toPublicChatMessage(m: (typeof db.data.chat_messages)[number], viewerId
     createdAt: m.created_at,
     mediaUrl: m.media_url || null,
     mediaType: m.media_type || null,
+    editedAt: m.edited_at || null,
+    roomId: m.room_id || null,
+    quoteMessageId: m.quote_message_id || null,
+    sharedMovie: m.shared_movie || null,
+    reactions: reactions,
   };
 }
 
 function toPublicDirectMessage(m: (typeof db.data.direct_messages)[number], viewerId: string) {
+  const reactions = normalizedReactions(m.reactions);
   return {
     id: m.id,
     fromUserId: m.from_user_id,
@@ -1298,6 +1361,142 @@ function toPublicDirectMessage(m: (typeof db.data.direct_messages)[number], view
     createdAt: m.created_at,
     mediaUrl: m.media_url || null,
     mediaType: m.media_type || null,
+    editedAt: m.edited_at || null,
+    deliveredAt: m.delivered_at || m.created_at,
+    seenAt: m.seen_at || (m.read ? m.created_at : null),
+    quoteMessageId: m.quote_message_id || null,
+    sharedMovie: m.shared_movie || null,
+    reactions: reactions,
+  };
+}
+
+function getChatActor(req: AuthedRequest) {
+  const guestId = String(req.body?.guestId || req.query.guestId || "").trim();
+  if (req.user) {
+    return {
+      actorId: req.user.id,
+      userId: req.user.id,
+      guestId: "",
+      name: req.user.name,
+      avatar: req.user.avatar,
+      isGuest: false,
+    };
+  }
+  return {
+    actorId: guestId || `guest-${crypto.randomUUID()}`,
+    userId: "",
+    guestId: guestId || `guest-${crypto.randomUUID()}`,
+    name: "Guest Viewer",
+    avatar: "",
+    isGuest: true,
+  };
+}
+
+function buildChatMeta(viewerId?: string) {
+  const online = getPresenceEntries();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayIso = todayStart.toISOString();
+  const messagesToday = db.data.chat_messages.filter((m) => m.created_at >= todayIso).length + db.data.direct_messages.filter((m) => m.created_at >= todayIso).length;
+  const nowWatching = online.filter((entry) => !!entry.currentMovieTitle).length;
+
+  const trendingCounts = new Map<string, { count: number; poster?: string | null }>();
+  for (const item of db.data.watch_history.filter((h) => h.watched_at >= todayIso && h.title)) {
+    const key = item.title || "Unknown";
+    const existing = trendingCounts.get(key) || { count: 0, poster: item.poster };
+    existing.count += 1;
+    if (!existing.poster && item.poster) existing.poster = item.poster;
+    trendingCounts.set(key, existing);
+  }
+  const trendingMovieEntry =
+    Array.from(trendingCounts.entries()).sort((a, b) => b[1].count - a[1].count)[0] ||
+    ["Community Favorite", { count: 0, poster: null }];
+
+  const roomStats = CHAT_ROOMS.map((room) => ({
+    ...room,
+    messageCount: db.data.chat_messages.filter((m) => (m.room_id || "action") === room.id).length,
+  }));
+
+  const topMembers = Array.from(
+    db.data.chat_messages.reduce((map, msg) => {
+      const entry = map.get(msg.user_id) || {
+        userId: msg.user_id,
+        name: msg.user_name,
+        avatar: msg.user_avatar,
+        messages: 0,
+        reputation: 0,
+      };
+      entry.messages += 1;
+      entry.reputation += entry.messages * 2 + (msg.liked_by?.length || 0) * 5;
+      map.set(msg.user_id, entry);
+      return map;
+    }, new Map<string, { userId: string; name: string; avatar: string; messages: number; reputation: number }>())
+  )
+    .sort((a, b) => b.reputation - a.reputation)
+    .slice(0, 5)
+    .map((member, index) => ({
+      ...member,
+      level: Math.max(1, Math.round(member.messages / 5) + 1),
+      badge: index === 0 ? "Movie Master" : member.messages > 15 ? "Top Critic" : "Film Fan",
+    }));
+
+  const onlineMembers = online
+    .filter((entry) => entry.userId && entry.userId !== viewerId)
+    .slice(0, 8)
+    .map((entry) => ({
+      userId: entry.userId,
+      name: entry.name,
+      avatar: entry.avatar || "",
+      status: entry.status,
+      currentMovieTitle: entry.currentMovieTitle || null,
+      lastActiveAt: entry.lastActiveAt,
+    }));
+
+  return {
+    serverStatus: "online",
+    stats: {
+      onlineUsers: online.length,
+      nowWatching,
+      messagesToday,
+      activeWatchParties: Math.max(1, Math.round(nowWatching / 3)),
+      reviewsPosted: db.data.comments.filter((c) => c.created_at >= todayIso).length,
+      trendingMovie: trendingMovieEntry[0],
+      topCommunityMember: topMembers[0]?.name || "Cinemax Crew",
+    },
+    trendingMovie: {
+      title: trendingMovieEntry[0],
+      watchCount: trendingMovieEntry[1].count,
+      poster: trendingMovieEntry[1].poster || null,
+    },
+    rooms: roomStats,
+    onlineMembers,
+    watchParties: online
+      .filter((entry) => !!entry.currentMovieTitle)
+      .slice(0, 5)
+      .map((entry) => ({
+        id: `${entry.clientId}-${entry.currentMovieTitle}`,
+        hostName: entry.name,
+        title: entry.currentMovieTitle,
+      })),
+    topMembers,
+    topReviews: db.data.comments
+      .filter((c) => c.status === "approved")
+      .sort((a, b) => (a.rating || 0) < (b.rating || 0) ? 1 : -1)
+      .slice(0, 4)
+      .map((c) => ({
+        id: c.id,
+        author: c.user_name,
+        movieTitle: c.movie_title || "Untitled",
+        rating: c.rating || 0,
+        text: c.text,
+      })),
+    rewards: {
+      title: "Daily Rewards",
+      description: "Send 3 messages, rate 1 movie, and join a room to unlock bonus points.",
+      claimable: true,
+    },
+    activityFeed: getActivityFeed(),
+    typing: getTypingEntries(),
   };
 }
 
@@ -1312,14 +1511,16 @@ const MAX_MEDIA_DATA_URL_LENGTH = 3_500_000;
 // a login wall just to look at Popular.
 authRouter.get("/api/chat/global", (req: AuthedRequest, res) => {
   const viewerId = getOptionalUserId(req);
+  const roomId = String(req.query.roomId || "").trim();
   const messages = db.data.chat_messages
+    .filter((m) => !roomId || (m.room_id || "action") === roomId)
     .slice(-500)
     .map((m) => toPublicChatMessage(m, viewerId));
   res.json({ messages });
 });
 
 authRouter.post("/api/chat/global", requireAuth, (req: AuthedRequest, res) => {
-  const { text, parentId, mediaUrl, mediaType } = req.body || {};
+  const { text, parentId, mediaUrl, mediaType, roomId, quoteMessageId, sharedMovie } = req.body || {};
   const trimmed = String(text || "").trim();
 
   // The global "Popular" feed accepts images but never voice notes — voice
@@ -1356,10 +1557,22 @@ authRouter.post("/api/chat/global", requireAuth, (req: AuthedRequest, res) => {
     created_at: new Date().toISOString(),
     media_url: mediaUrl ? String(mediaUrl) : null,
     media_type: mediaUrl ? "image" as const : null,
+    edited_at: null,
+    room_id: typeof roomId === "string" && roomId ? roomId : CHAT_ROOMS[0].id,
+    quote_message_id: quoteMessageId ? String(quoteMessageId) : null,
+    shared_movie: normalizeSharedMovie(sharedMovie),
+    reactions: {},
   };
   db.data.chat_messages.push(message);
   db.save();
-  res.status(201).json({ message: toPublicChatMessage(message, req.user!.id) });
+  const publicMessage = toPublicChatMessage(message, req.user!.id);
+  pushChatActivity("💬", `${req.user!.name} posted in ${(CHAT_ROOMS.find((room) => room.id === message.room_id)?.label) || "Live Chat"}.`);
+  if (message.shared_movie?.title) {
+    pushChatActivity("🎬", `${req.user!.name} shared ${message.shared_movie.title} in chat.`);
+  }
+  broadcastChatEvent("global_message_created", { message: publicMessage });
+  broadcastChatEvent("chat_meta_updated", buildChatMeta(req.user!.id));
+  res.status(201).json({ message: publicMessage });
 });
 
 authRouter.post("/api/chat/global/:id/like", requireAuth, (req: AuthedRequest, res) => {
@@ -1373,7 +1586,51 @@ authRouter.post("/api/chat/global/:id/like", requireAuth, (req: AuthedRequest, r
   if (idx === -1) message.liked_by.push(userId);
   else message.liked_by.splice(idx, 1);
   db.save();
-  res.json({ message: toPublicChatMessage(message, userId) });
+  const publicMessage = toPublicChatMessage(message, userId);
+  broadcastChatEvent("global_message_updated", { message: publicMessage });
+  res.json({ message: publicMessage });
+});
+
+authRouter.post("/api/chat/global/:id/react", requireAuth, (req: AuthedRequest, res) => {
+  const message = db.data.chat_messages.find((m) => m.id === req.params.id);
+  const emoji = String(req.body?.emoji || "").trim();
+  if (!message) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+  if (!emoji) {
+    res.status(400).json({ error: "emoji is required." });
+    return;
+  }
+  message.reactions = normalizedReactions(message.reactions);
+  toggleReaction(message.reactions, emoji, req.user!.id);
+  db.save();
+  const publicMessage = toPublicChatMessage(message, req.user!.id);
+  broadcastChatEvent("message_reaction_updated", { scope: "global", message: publicMessage });
+  res.json({ message: publicMessage });
+});
+
+authRouter.patch("/api/chat/global/:id", requireAuth, (req: AuthedRequest, res) => {
+  const message = db.data.chat_messages.find((m) => m.id === req.params.id);
+  const text = String(req.body?.text || "").trim();
+  if (!message) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+  if (message.user_id !== req.user!.id && req.user!.role !== "admin") {
+    res.status(403).json({ error: "You can only edit your own messages." });
+    return;
+  }
+  if (!text) {
+    res.status(400).json({ error: "text is required." });
+    return;
+  }
+  message.text = text.slice(0, 1000);
+  message.edited_at = new Date().toISOString();
+  db.save();
+  const publicMessage = toPublicChatMessage(message, req.user!.id);
+  broadcastChatEvent("global_message_updated", { message: publicMessage });
+  res.json({ message: publicMessage });
 });
 
 authRouter.delete("/api/chat/global/:id", requireAuth, (req: AuthedRequest, res) => {
@@ -1388,6 +1645,65 @@ authRouter.delete("/api/chat/global/:id", requireAuth, (req: AuthedRequest, res)
   }
   db.data.chat_messages = db.data.chat_messages.filter((m) => m.id !== req.params.id && m.parent_id !== req.params.id);
   db.save();
+  broadcastChatEvent("global_message_deleted", { id: req.params.id, parentId: message.parent_id || null });
+  broadcastChatEvent("chat_meta_updated", buildChatMeta(req.user!.id));
+  res.json({ ok: true });
+});
+
+authRouter.get("/api/chat/meta", (req: AuthedRequest, res) => {
+  res.json(buildChatMeta(getOptionalUserId(req)));
+});
+
+authRouter.get("/api/chat/stream", (req: AuthedRequest, res) => {
+  const clientId = String(req.query.clientId || crypto.randomUUID());
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+  registerChatClient(clientId, res);
+  res.write(`retry: 2500\n\n`);
+  res.write(`event: ready\ndata: ${JSON.stringify({ clientId })}\n\n`);
+  broadcastChatEvent("chat_meta_updated", buildChatMeta(getOptionalUserId(req)));
+  req.on("close", () => {
+    unregisterChatClient(clientId);
+    clearPresence(clientId);
+  });
+});
+
+authRouter.post("/api/chat/presence", (req: AuthedRequest, res) => {
+  const actor = getChatActor(req);
+  const clientId = String(req.body?.clientId || "").trim() || actor.actorId;
+  upsertPresence({
+    clientId,
+    userId: actor.userId || undefined,
+    guestId: actor.userId ? undefined : actor.guestId,
+    name: actor.name,
+    avatar: actor.avatar,
+    status: req.body?.status === "away" ? "away" : "online",
+    currentView: req.body?.currentView ? String(req.body.currentView) : undefined,
+    currentMovieTitle: req.body?.currentMovieTitle ? String(req.body.currentMovieTitle) : undefined,
+    lastActiveAt: new Date().toISOString(),
+    panelOpen: !!req.body?.panelOpen,
+    language: req.body?.language ? String(req.body.language) : undefined,
+  });
+  res.json({ ok: true, meta: buildChatMeta(actor.userId || undefined) });
+});
+
+authRouter.post("/api/chat/typing", (req: AuthedRequest, res) => {
+  const actor = getChatActor(req);
+  if (!req.body?.isTyping) {
+    clearTypingForActor(actor.actorId);
+    res.json({ ok: true });
+    return;
+  }
+  setTyping({
+    scope: req.body?.scope === "dm" ? "dm" : "global",
+    userId: actor.userId || undefined,
+    guestId: actor.userId ? undefined : actor.guestId,
+    name: actor.name,
+    roomId: req.body?.roomId ? String(req.body.roomId) : undefined,
+    targetUserId: req.body?.targetUserId ? String(req.body.targetUserId) : undefined,
+  });
   res.json({ ok: true });
 });
 
@@ -1454,6 +1770,7 @@ authRouter.get("/api/chat/conversations/:userId", requireAuth, (req: AuthedReque
   for (const m of thread) {
     if (m.to_user_id === myId && !m.read) {
       m.read = true;
+      m.seen_at = new Date().toISOString();
       changed = true;
     }
   }
@@ -1475,7 +1792,7 @@ authRouter.post("/api/chat/conversations/:userId", requireAuth, (req: AuthedRequ
     return;
   }
   const trimmed = String(req.body?.text || "").trim();
-  const { mediaUrl, mediaType } = req.body || {};
+  const { mediaUrl, mediaType, quoteMessageId, sharedMovie } = req.body || {};
   if (mediaType && mediaType !== "image" && mediaType !== "audio") {
     res.status(400).json({ error: "Unsupported attachment type." });
     return;
@@ -1503,6 +1820,12 @@ authRouter.post("/api/chat/conversations/:userId", requireAuth, (req: AuthedRequ
     created_at: new Date().toISOString(),
     media_url: mediaUrl ? String(mediaUrl) : null,
     media_type: mediaUrl ? ((mediaType === "audio" ? "audio" : "image") as "audio" | "image") : null,
+    edited_at: null,
+    delivered_at: new Date().toISOString(),
+    seen_at: null,
+    quote_message_id: quoteMessageId ? String(quoteMessageId) : null,
+    shared_movie: normalizeSharedMovie(sharedMovie),
+    reactions: {},
   };
   db.data.direct_messages.push(message);
   db.save();
@@ -1510,7 +1833,7 @@ authRouter.post("/api/chat/conversations/:userId", requireAuth, (req: AuthedRequ
   db.data.notifications.push({
     id: crypto.randomUUID(),
     user_id: partnerId,
-    type: "message",
+    type: "announcement",
     title: `New message from ${req.user!.name}`,
     message: trimmed ? trimmed.slice(0, 120) : (mediaType === "audio" ? "🎤 Voice message" : "📷 Image"),
     read: 0,
@@ -1518,7 +1841,17 @@ authRouter.post("/api/chat/conversations/:userId", requireAuth, (req: AuthedRequ
   });
   db.save();
 
-  res.status(201).json({ message: toPublicDirectMessage(message, myId) });
+  const publicMessage = toPublicDirectMessage(message, myId);
+  pushChatActivity("📨", `${req.user!.name} sent a direct message.`);
+  if (message.shared_movie?.title) {
+    pushChatActivity("🎞️", `${req.user!.name} recommended ${message.shared_movie.title} privately.`);
+  }
+  broadcastChatEvent("direct_message_created", {
+    message: publicMessage,
+    participants: [myId, partnerId],
+  });
+  broadcastChatEvent("chat_meta_updated", buildChatMeta(myId));
+  res.status(201).json({ message: publicMessage });
 });
 
 authRouter.post("/api/chat/dm/:id/like", requireAuth, (req: AuthedRequest, res) => {
@@ -1536,6 +1869,74 @@ authRouter.post("/api/chat/dm/:id/like", requireAuth, (req: AuthedRequest, res) 
   if (idx === -1) message.liked_by.push(myId);
   else message.liked_by.splice(idx, 1);
   db.save();
-  res.json({ message: toPublicDirectMessage(message, myId) });
+  const publicMessage = toPublicDirectMessage(message, myId);
+  broadcastChatEvent("direct_message_updated", { message: publicMessage, participants: [message.from_user_id, message.to_user_id] });
+  res.json({ message: publicMessage });
 });
 
+authRouter.post("/api/chat/dm/:id/react", requireAuth, (req: AuthedRequest, res) => {
+  const message = db.data.direct_messages.find((m) => m.id === req.params.id);
+  const emoji = String(req.body?.emoji || "").trim();
+  if (!message) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+  const myId = req.user!.id;
+  if (message.from_user_id !== myId && message.to_user_id !== myId) {
+    res.status(403).json({ error: "You don't have access to this conversation." });
+    return;
+  }
+  if (!emoji) {
+    res.status(400).json({ error: "emoji is required." });
+    return;
+  }
+  message.reactions = normalizedReactions(message.reactions);
+  toggleReaction(message.reactions, emoji, myId);
+  db.save();
+  const publicMessage = toPublicDirectMessage(message, myId);
+  broadcastChatEvent("message_reaction_updated", {
+    scope: "dm",
+    message: publicMessage,
+    participants: [message.from_user_id, message.to_user_id],
+  });
+  res.json({ message: publicMessage });
+});
+
+authRouter.patch("/api/chat/dm/:id", requireAuth, (req: AuthedRequest, res) => {
+  const message = db.data.direct_messages.find((m) => m.id === req.params.id);
+  const text = String(req.body?.text || "").trim();
+  if (!message) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+  if (message.from_user_id !== req.user!.id) {
+    res.status(403).json({ error: "You can only edit your own messages." });
+    return;
+  }
+  if (!text) {
+    res.status(400).json({ error: "text is required." });
+    return;
+  }
+  message.text = text.slice(0, 2000);
+  message.edited_at = new Date().toISOString();
+  db.save();
+  const publicMessage = toPublicDirectMessage(message, req.user!.id);
+  broadcastChatEvent("direct_message_updated", { message: publicMessage, participants: [message.from_user_id, message.to_user_id] });
+  res.json({ message: publicMessage });
+});
+
+authRouter.delete("/api/chat/dm/:id", requireAuth, (req: AuthedRequest, res) => {
+  const message = db.data.direct_messages.find((m) => m.id === req.params.id);
+  if (!message) {
+    res.status(404).json({ error: "Message not found." });
+    return;
+  }
+  if (message.from_user_id !== req.user!.id && req.user!.role !== "admin") {
+    res.status(403).json({ error: "You can only delete your own messages." });
+    return;
+  }
+  db.data.direct_messages = db.data.direct_messages.filter((m) => m.id !== req.params.id);
+  db.save();
+  broadcastChatEvent("direct_message_deleted", { id: req.params.id, participants: [message.from_user_id, message.to_user_id] });
+  res.json({ ok: true });
+});

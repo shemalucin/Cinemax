@@ -1,208 +1,168 @@
-﻿{
-    "users":  [
-                  {
-                      "id":  "c5a517d6-7c4d-433c-a80f-71ea19828de9",
-                      "email":  "admin@example.com",
-                      "password_hash":  "$2a$12$sDuzBcOpe.MxA5P6VRv7f.6XIL2v8W5t4NF7z6riJOJ883pV0LLoO",
-                      "name":  "Cinemax Admin",
-                      "avatar":  "cartoon:orion",
-                      "banner":  "",
-                      "subscription":  "Premium",
-                      "role":  "admin",
-                      "status":  "active",
-                      "preferences":  "{\"autoplayNext\":true,\"autoplayTrailers\":true,\"defaultQuality\":\"Auto\",\"subtitleLanguage\":\"Off\",\"audioLanguage\":\"English\",\"notifyNewReleases\":true,\"notifyRecommendations\":false,\"matureContentLock\":false,\"appLanguage\":\"English\"}",
-                      "created_at":  "2026-07-27T12:58:33.035Z",
-                      "updated_at":  "2026-07-27T12:58:33.035Z"
-                  }
-              ],
-    "watchlist":  [
-
-                  ],
-    "my_list":  [
-
-                ],
-    "downloads":  [
-
-                  ],
-    "favorites":  [
-
-                  ],
-    "watch_history":  [
-
-                      ],
-    "notifications":  [
-
-                      ],
-    "comments":  [
-
-                 ],
-    "ads":  [
-
-            ],
-    "activity_logs":  [
-
-                      ],
-    "category_overrides":  [
-
-                           ],
-    "site_settings":  {
-                          "siteName":  "Cinemax",
-                          "maintenanceMode":  false,
-                          "heroTagline":  "Welcome to Cinemax! Enjoy new trend movies and TV shows.",
-                          "featuredMovieIds":  [
-
-                                               ],
-                          "trendingOverrideIds":  [
-
-                                                  ],
-                          "hiddenMovieIds":  [
-
-                                             ],
-                          "aiModel":  "llama-3.3-70b-versatile",
-                          "aiPrimaryModel":  "gemini-2.5-flash",
-                          "aiSystemPromptExtra":  "",
-                          "aiEnabled":  true,
-                          "apkUrl":  "",
-                          "homepageSections":  [
-                                                   {
-                                                       "id":  "trending",
-                                                       "label":  "Trending Now",
-                                                       "visible":  true
-                                                   },
-                                                   {
-                                                       "id":  "tv",
-                                                       "label":  "Popular TV Broadcast Series",
-                                                       "visible":  true
-                                                   },
-                                                   {
-                                                       "id":  "popular",
-                                                       "label":  "Popular Movies",
-                                                       "visible":  true
-                                                   },
-                                                   {
-                                                       "id":  "top_rated",
-                                                       "label":  "Top Rated Cinema Hits",
-                                                       "visible":  true
-                                                   },
-                                                   {
-                                                       "id":  "upcoming",
-                                                       "label":  "Upcoming Blockbusters",
-                                                       "visible":  true
-                                                   },
-                                                   {
-                                                       "id":  "now_playing",
-                                                       "label":  "Now Playing in Theaters",
-                                                       "visible":  true
-                                                   }
-                                               ],
-                          "apiKeys":  {
-                                          "tmdb":  "",
-                                          "gemini":  "",
-                                          "groq":  "",
-                                          "openai":  "",
-                                          "grok":  ""
-                                      },
-                          "contentPages":  {
-                                               "home":  {
-                                                            "enabled":  true,
-                                                            "label":  "Home"
-                                                        },
-                                               "movies":  {
-                                                              "enabled":  true,
-                                                              "label":  "Movies"
-                                                          },
-                                               "tv":  {
-                                                          "enabled":  true,
-                                                          "label":  "TV Shows"
-                                                      },
-                                               "shorts":  {
-                                                              "enabled":  true,
-                                                              "label":  "Shorts"
-                                                          },
-                                               "mylist":  {
-                                                              "enabled":  true,
-                                                              "label":  "My List"
-                                                          },
-                                               "watchlist":  {
-                                                                 "enabled":  true,
-                                                                 "label":  "Watchlist"
-                                                             },
-                                               "history":  {
-                                                               "enabled":  true,
-                                                               "label":  "History"
-                                                           },
-                                               "favorites":  {
-                                                                 "enabled":  true,
-                                                                 "label":  "Favorites"
-                                                             },
-                                               "downloads":  {
-                                                                 "enabled":  true,
-                                                                 "label":  "Downloads"
-                                                             },
-                                               "profile":  {
-                                                               "enabled":  true,
-                                                               "label":  "Profile"
-                                                           },
-                                               "help":  {
-                                                            "enabled":  true,
-                                                            "label":  "Help Desk"
-                                                        },
-                                               "about":  {
-                                                             "enabled":  true,
-                                                             "label":  "About Cinemax"
-                                                         },
-                                               "gens":  {
-                                                            "enabled":  true,
-                                                            "label":  "Gens"
-                                                        }
-                                           },
-                          "socialMediaLinks":  [
-                                                   {
-                                                       "id":  "instagram",
-                                                       "platform":  "instagram",
-                                                       "name":  "Instagram",
-                                                       "url":  "https://www.instagram.com/cinemaxmov01/?hl=en",
-                                                       "icon":  "Instagram",
-                                                       "enabled":  true
-                                                   },
-                                                   {
-                                                       "id":  "youtube",
-                                                       "platform":  "youtube",
-                                                       "name":  "YouTube",
-                                                       "url":  "https://www.youtube.com/@Cinemaxmov",
-                                                       "icon":  "Youtube",
-                                                       "enabled":  true
-                                                   },
-                                                   {
-                                                       "id":  "whatsapp",
-                                                       "platform":  "whatsapp",
-                                                       "name":  "WhatsApp",
-                                                       "url":  "https://wa.me/738664438",
-                                                       "icon":  "MessageCircle",
-                                                       "enabled":  true
-                                                   }
-                                               ]
-                      },
-    "chat_messages":  [
-
-                      ],
-    "direct_messages":  [
-
-                        ],
-    "custom_content":  [
-
-                       ],
-    "custom_content_seq":  0,
-    "support_inquiries":  [
-
-                          ],
-    "gens_access":  [
-
-                    ],
-    "ai_chat_history":  [
-
-                        ],
-    "ai_memory":  [
-
-                  ]
+{
+  "users": [
+    {
+      "id": "c4fec432-3b68-4787-ad9b-fd60f79a7227",
+      "email": "allkikisweb@gmail.com",
+      "password_hash": "$2a$12$qZjWe0OZt8dnsY58Pbsl1OLGd.UGGVozw/JovH0fLcgNrYWM4hhB.",
+      "name": "Cinemax Admin",
+      "avatar": "cartoon:orion",
+      "banner": "",
+      "subscription": "Premium",
+      "role": "admin",
+      "status": "active",
+      "preferences": "{\"autoplayNext\":true,\"autoplayTrailers\":true,\"defaultQuality\":\"Auto\",\"subtitleLanguage\":\"Off\",\"audioLanguage\":\"English\",\"notifyNewReleases\":true,\"notifyRecommendations\":false,\"matureContentLock\":false,\"appLanguage\":\"English\"}",
+      "created_at": "2026-07-27T13:47:41.141Z",
+      "updated_at": "2026-07-27T13:47:41.141Z"
+    }
+  ],
+  "watchlist": [],
+  "my_list": [],
+  "downloads": [],
+  "favorites": [],
+  "watch_history": [],
+  "notifications": [],
+  "comments": [],
+  "ads": [],
+  "activity_logs": [],
+  "category_overrides": [],
+  "site_settings": {
+    "siteName": "Cinemax",
+    "maintenanceMode": false,
+    "heroTagline": "Welcome to Cinemax! Enjoy new trend movies and TV shows.",
+    "featuredMovieIds": [],
+    "trendingOverrideIds": [],
+    "hiddenMovieIds": [],
+    "aiModel": "llama-3.3-70b-versatile",
+    "aiPrimaryModel": "gemini-2.5-flash",
+    "aiSystemPromptExtra": "",
+    "aiEnabled": true,
+    "apkUrl": "",
+    "homepageSections": [
+      {
+        "id": "trending",
+        "label": "Trending Now",
+        "visible": true
+      },
+      {
+        "id": "tv",
+        "label": "Popular TV Broadcast Series",
+        "visible": true
+      },
+      {
+        "id": "popular",
+        "label": "Popular Movies",
+        "visible": true
+      },
+      {
+        "id": "top_rated",
+        "label": "Top Rated Cinema Hits",
+        "visible": true
+      },
+      {
+        "id": "upcoming",
+        "label": "Upcoming Blockbusters",
+        "visible": true
+      },
+      {
+        "id": "now_playing",
+        "label": "Now Playing in Theaters",
+        "visible": true
+      }
+    ],
+    "apiKeys": {
+      "tmdb": "422828f653928ec5244f1a63a8b8641f",
+      "gemini": "your-gemini-api-key-here",
+      "groq": "your-groq-api-key-here",
+      "openai": "your-openai-api-key-here",
+      "grok": ""
+    },
+    "contentPages": {
+      "home": {
+        "enabled": true,
+        "label": "Home"
+      },
+      "movies": {
+        "enabled": true,
+        "label": "Movies"
+      },
+      "tv": {
+        "enabled": true,
+        "label": "TV Shows"
+      },
+      "shorts": {
+        "enabled": true,
+        "label": "Shorts"
+      },
+      "mylist": {
+        "enabled": true,
+        "label": "My List"
+      },
+      "watchlist": {
+        "enabled": true,
+        "label": "Watchlist"
+      },
+      "history": {
+        "enabled": true,
+        "label": "History"
+      },
+      "favorites": {
+        "enabled": true,
+        "label": "Favorites"
+      },
+      "downloads": {
+        "enabled": true,
+        "label": "Downloads"
+      },
+      "profile": {
+        "enabled": true,
+        "label": "Profile"
+      },
+      "help": {
+        "enabled": true,
+        "label": "Help Desk"
+      },
+      "about": {
+        "enabled": true,
+        "label": "About Cinemax"
+      },
+      "gens": {
+        "enabled": true,
+        "label": "Gens"
+      }
+    },
+    "socialMediaLinks": [
+      {
+        "id": "instagram",
+        "platform": "instagram",
+        "name": "Instagram",
+        "url": "https://www.instagram.com/cinemaxmov01/?hl=en",
+        "icon": "Instagram",
+        "enabled": true
+      },
+      {
+        "id": "youtube",
+        "platform": "youtube",
+        "name": "YouTube",
+        "url": "https://www.youtube.com/@Cinemaxmov",
+        "icon": "Youtube",
+        "enabled": true
+      },
+      {
+        "id": "whatsapp",
+        "platform": "whatsapp",
+        "name": "WhatsApp",
+        "url": "https://wa.me/738664438",
+        "icon": "MessageCircle",
+        "enabled": true
+      }
+    ]
+  },
+  "chat_messages": [],
+  "direct_messages": [],
+  "custom_content": [],
+  "custom_content_seq": 0,
+  "support_inquiries": [],
+  "gens_access": [],
+  "ai_chat_history": [],
+  "ai_memory": []
 }

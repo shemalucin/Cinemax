@@ -181,6 +181,17 @@ export interface DbAiMemoryItem {
   updated_at: string;
 }
 
+export interface DbSharedMovieCard {
+  id: number;
+  title: string;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  vote_average: number;
+  media_type: "movie" | "tv";
+  genres?: string[];
+  overview?: string;
+}
+
 export interface DbChatMessage {
   id: string;
   user_id: string;
@@ -192,6 +203,11 @@ export interface DbChatMessage {
   created_at: string;
   media_url: string | null;
   media_type: "image" | "audio" | null;
+  edited_at?: string | null;
+  room_id?: string | null;
+  quote_message_id?: string | null;
+  shared_movie?: DbSharedMovieCard | null;
+  reactions?: Record<string, string[]>;
 }
 
 export interface DbDirectMessage {
@@ -204,6 +220,12 @@ export interface DbDirectMessage {
   created_at: string;
   media_url: string | null;
   media_type: "image" | "audio" | null;
+  edited_at?: string | null;
+  delivered_at?: string | null;
+  seen_at?: string | null;
+  quote_message_id?: string | null;
+  shared_movie?: DbSharedMovieCard | null;
+  reactions?: Record<string, string[]>;
 }
 
 export interface DbSeason {
