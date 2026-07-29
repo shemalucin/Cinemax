@@ -297,9 +297,7 @@ function getApiKey(name: "tmdb" | "gemini" | "groq" | "openai" | "grok"): string
   const result = (fromEnv || fromDb || "").trim();
   
   // Debug logging for API key loading
-  if (name === "gemini") {
-    console.log(`[getApiKey] ${name}: fromEnv=${fromEnv ? 'SET' : 'NOT_SET'}, fromDb=${fromDb ? 'SET' : 'NOT_SET'}, result=${result ? 'HAS_VALUE' : 'EMPTY'}`);
-  }
+  console.log(`[getApiKey] ${name}: fromEnv=${fromEnv ? 'SET' : 'NOT_SET'}, fromDb=${fromDb ? 'SET' : 'NOT_SET'}, result=${result ? 'HAS_VALUE' : 'EMPTY'}`);
   
   return result;
 }
@@ -311,16 +309,30 @@ function getGeminiClient(): GoogleGenAI {
     throw new Error("Gemini API key not configured");
   }
   console.log("[Gemini] Client initialized with API key:", key.substring(0, 10) + "...");
-  return new GoogleGenAI({
-    apiKey: key,
-    httpOptions: { headers: { "User-Agent": "aistudio-build" } },
-  });
+  try {
+    return new GoogleGenAI({
+      apiKey: key,
+      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+    });
+  } catch (error) {
+    console.error("[Gemini] Failed to initialize client:", error);
+    throw new Error("Failed to initialize Gemini client");
+  }
 }
 
 function getOpenAIClient(): OpenAI {
   const key = getApiKey("openai");
-  if (!key) throw new Error("OpenAI API key not configured");
-  return new OpenAI({ apiKey: key });
+  if (!key) {
+    console.error("[OpenAI] API key not configured");
+    throw new Error("OpenAI API key not configured");
+  }
+  console.log("[OpenAI] Client initialized with API key:", key.substring(0, 10) + "...");
+  try {
+    return new OpenAI({ apiKey: key });
+  } catch (error) {
+    console.error("[OpenAI] Failed to initialize client:", error);
+    throw new Error("Failed to initialize OpenAI client");
+  }
 }
 
 async function grokChat(messages: Array<{ role: string; content: string }>, model: string = "grok-beta"): Promise<string> {
@@ -680,7 +692,17 @@ async function routedAssistantChat(messages: Array<{ role: string; content: stri
         return { text: await geminiChat(messages), engine: "gemini" };
       } catch (err3) {
         console.warn("[assistant] Gemini fallback failed; falling back to Groq:", err3);
-        return { text: await groqChat(messages, groqModel), engine: "groq" };
+        try {
+          return { text: await groqChat(messages, groqModel), engine: "groq" };
+        } catch (err4) {
+          console.warn("[assistant] All AI services failed; using default fallback:", err4);
+          // Default fallback response when no API keys are configured
+          const userMessage = messages[messages.length - 1]?.content || "";
+          return { 
+            text: `I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?`,
+            engine: "system"
+          };
+        }
       }
     }
   }
@@ -690,7 +712,7 @@ function estimateTokens(text: string): number {
   return Math.max(1, Math.ceil(String(text || "").length / 4));
 }
 
-function saveAiChatLog(user: ReturnType<typeof getUserById> | undefined, role: "user" | "assistant", message: string, engine: "openai" | "grok" | "gemini" | "groq" | "system") {
+function saveAiChatLog(user: ReturnType<typeof getUserById> | undefined, role: "user" | "assistant", message: string, engine: "openai" | "grok" | "gemini" | "groq" | "system" | "fallback") {
   db.data.ai_chat_history.push({
     id: crypto.randomUUID(),
     user_id: user?.id || null,

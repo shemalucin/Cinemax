@@ -221,10 +221,15 @@ export function isAdminEmail(email: string): boolean {
   return !!user && user.role === "admin";
 }
 
-/** Admin signs in with an emailed OTP; regular users sign in with password. */
+/** Admins can sign in with either password or OTP. Returns "otp" only if the
+ *  email belongs to an admin AND email delivery is configured — otherwise
+ *  falls back to password for all accounts. */
 export function getAdminLoginMethod(email: string): "otp" | "password" {
   if (!isAdminEmail(email)) return "password";
-  return "otp";
+  // Only use OTP if Brevo is configured. Otherwise, allow password login.
+  const { isMailerConfigured } = require("./mailer");
+  if (isMailerConfigured()) return "otp";
+  return "password";
 }
 
 /** Rejects a resend requested before the cooldown has elapsed. */

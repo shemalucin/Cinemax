@@ -47,6 +47,21 @@ import {
   unregisterChatClient,
   upsertPresence,
 } from "../lib/chatRealtime";
+import { 
+  getUserByEmail as getSupabaseUserByEmail,
+  getUserBySupabaseId,
+  createUserProfile,
+  updateUserProfile,
+  getUserWatchlist,
+  getUserFavorites,
+  getUserMyList,
+  addToWatchlist,
+  removeFromWatchlist,
+  addToFavorites,
+  removeFromFavorites,
+  addToMyList,
+  removeFromMyList,
+} from "../lib/supabase";
 
 const LIST_STORAGE_LIMIT_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 const DOWNLOAD_STORAGE_LIMIT_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
@@ -117,18 +132,28 @@ authRouter.post("/api/auth/signup/request", rateLimit({ name: "signup-request", 
     return;
   }
 
+  const displayName = (name && String(name).trim()) || email.split("@")[0];
+
+  // If Brevo is not configured, create the account immediately without email verification.
   if (!isMailerConfigured()) {
-    res.status(503).json({ error: "Email delivery isn't configured on this server yet, so verification codes can't be sent. Please contact support." });
+    console.log("[auth] Brevo not configured - skipping email verification and creating account directly");
+    const user = createUser(email, "", displayName, password);
+    db.data.notifications.push({
+      id: crypto.randomUUID(),
+      user_id: user.id,
+      type: "account",
+      title: "Welcome to Cinemax",
+      message: "Your account is ready. Sign in to explore trending titles and build your lists.",
+      read: 0,
+      created_at: new Date().toISOString(),
+    });
+    db.save();
+    logActivity(user.email, "account_created", "user_account", { name: displayName }, user.id, req.ip);
+    res.status(201).json({ ok: true, autoVerified: true, message: "Account created successfully. You can now sign in." });
     return;
   }
 
-  const displayName = (name && String(name).trim()) || email.split("@")[0];
-
-  // Nothing is written to the database yet. The username/email/password are
-  // held only in the short-lived, in-memory signup-verification store
-  // (hashed password included) until the correct OTP comes back — see
-  // verifySignupCode / the /api/auth/signup/verify route below, which is the
-  // only place createUser() is called for a brand-new sign-up.
+  // Brevo is configured - send OTP verification email
   const otp = issueSignupVerification(email, displayName, password);
   try {
     await sendSignupVerificationEmail(email.toLowerCase().trim(), otp);
@@ -265,8 +290,9 @@ authRouter.post(
       return;
     }
 
+    // If Brevo is not configured, return an error explaining password reset isn't available
     if (!isMailerConfigured()) {
-      res.status(503).json({ error: "Email delivery isn't configured on this server yet, so password reset codes can't be sent. Please contact support." });
+      res.status(503).json({ error: "Email delivery isn't configured on this server yet, so password reset codes can't be sent. Please contact support to reset your password." });
       return;
     }
 
@@ -499,6 +525,126 @@ authRouter.post("/api/auth/logout", (_req, res) => {
 
 authRouter.get("/api/auth/me", requireAuth, (req: AuthedRequest, res) => {
   res.json({ user: userWithExtras(req.user!) });
+});
+
+// Supabase OAuth sync endpoint - syncs Google OAuth users with backend
+authRouter.post("/api/auth/supabase-sync", async (req, res) => {
+  try {
+    const { email, name, avatar, supabase_id, onboarding } = req.body || {};
+    
+    console.log('[Supabase Sync] Received sync request:', { email, supabase_id, hasOnboarding: !!onboarding });
+    
+    if (!email || !supabase_id) {
+      res.status(400).json({ error: "Email and Supabase ID are required." });
+      return;
+    }
+
+    // Check if user exists in Supabase
+    let supabaseUser = await getSupabaseUserByEmail(email);
+    
+    if (!supabaseUser) {
+      // Create new user in Supabase
+      console.log('[Supabase Sync] Creating new user profile in Supabase');
+      supabaseUser = await createUserProfile({
+        id: supabase_id,
+        email: email,
+        full_name: name || email.split('@')[0],
+        avatar_url: avatar || null,
+        role: 'user',
+        onboarding: onboarding || null,
+      });
+      console.log('[Supabase Sync] Created user with onboarding:', supabaseUser.onboarding);
+    } else {
+      // Update existing user in Supabase
+      console.log('[Supabase Sync] Updating existing user profile in Supabase, current onboarding:', supabaseUser.onboarding);
+      if (onboarding) {
+        supabaseUser = await updateUserProfile(supabaseUser.id, {
+          full_name: name || supabaseUser.full_name,
+          avatar_url: avatar || supabaseUser.avatar_url,
+          onboarding: onboarding,
+        });
+        console.log('[Supabase Sync] Updated user with onboarding:', supabaseUser.onboarding);
+      } else {
+        // CRITICAL: Even without new onboarding data, we must preserve existing onboarding
+        console.log('[Supabase Sync] No new onboarding data, preserving existing onboarding:', supabaseUser.onboarding);
+        // Ensure we still return the existing onboarding data
+        if (!supabaseUser.onboarding) {
+          console.warn('[Supabase Sync] User has no onboarding data in Supabase');
+        }
+      }
+    }
+
+    // Also sync to local db for compatibility
+    let localUser = getUserByEmail(email);
+    if (!localUser) {
+      localUser = createUser(email, "", name || email.split('@')[0], "");
+      // Mark as Google OAuth user
+      localUser.google_id = supabase_id;
+      if (onboarding) {
+        localUser.onboarding = onboarding;
+      }
+      db.save();
+      console.log('[Supabase Sync] Created local user with onboarding:', localUser.onboarding);
+    } else {
+      // Update local user
+      if (onboarding) {
+        localUser.onboarding = onboarding;
+        db.save();
+        console.log('[Supabase Sync] Updated local user with onboarding:', localUser.onboarding);
+      } else if (supabaseUser.onboarding && !localUser.onboarding) {
+        // Sync existing Supabase onboarding to local
+        localUser.onboarding = supabaseUser.onboarding;
+        db.save();
+        console.log('[Supabase Sync] Synced Supabase onboarding to local user');
+      }
+    }
+
+    // Get user data from Supabase
+    const watchlist = await getUserWatchlist(supabaseUser.id);
+    const favorites = await getUserFavorites(supabaseUser.id);
+    const myList = await getUserMyList(supabaseUser.id);
+
+    // Return combined user data - prioritize Supabase onboarding
+    const userData = {
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      name: supabaseUser.full_name || name,
+      avatar: supabaseUser.avatar_url || avatar || "https://images.unsplash.com/photo-1574375927938-d5a98e8edd86?q=80&w=1200&auto=format&fit=crop",
+      banner: "https://images.unsplash.com/photo-1574375927938-d5a98e8edd86?q=80&w=1200&auto=format&fit=crop",
+      subscription: "Free",
+      role: supabaseUser.role || "user",
+      favorites: favorites.map(f => f.movie_id),
+      myList: myList.map(m => m.movie_id),
+      watchlist: watchlist.map(w => w.movie_id),
+      listStorageUsed: 0,
+      listStorageLimit: 2 * 1024 * 1024 * 1024,
+      downloadStorageUsed: 0,
+      downloadStorageLimit: 2 * 1024 * 1024 * 1024,
+      downloads: [],
+      watchHistory: [],
+      preferences: {},
+      onboarding: supabaseUser.onboarding || localUser.onboarding, // Prioritize Supabase
+    };
+
+    console.log('[Supabase Sync] Returning user data with onboarding:', userData.onboarding);
+    
+    // BUG FIX: this was setting the raw Supabase UUID as the session cookie
+    // instead of a signed JWT. requireAuth() runs jwt.verify() on whatever is
+    // in the cookie, so a bare UUID always failed verification — every
+    // Google-signed-in user got a 401 on the very next authenticated request
+    // (favorites, watchlist, notifications, /api/auth/me, etc.), which
+    // syncFetch() treats as an expired session and force-opens the sign-in
+    // modal. That repeated forced re-auth is what looked like the onboarding
+    // screen looping.
+    const sessionToken = signToken(supabaseUser.id);
+    setSessionCookie(res, sessionToken);
+    logActivity(email, "supabase_oauth_sync", "user_account", { supabase_id, hasOnboarding: !!userData.onboarding }, supabaseUser.id, req.ip);
+    
+    res.json({ user: userData });
+  } catch (error) {
+    console.error('[Supabase Sync] Error:', error);
+    res.status(500).json({ error: "Failed to sync user with backend" });
+  }
 });
 
 /** Short-lived signed URL so admins can open the standalone panel securely. */
@@ -914,11 +1060,21 @@ authRouter.get("/api/content/custom", (_req, res) => {
 // MY LIST (manual save-for-later)
 // ---------------------------------------------------------------------------
 
-authRouter.get("/api/my-list", requireAuth, (req: AuthedRequest, res) => {
-  res.json({ movieIds: getUserExtras(req.user!.id).myList });
+authRouter.get("/api/my-list", requireAuth, async (req: AuthedRequest, res) => {
+  // Try to get from Supabase first, fall back to local db
+  try {
+    const supabaseMyList = await getUserMyList(req.user!.id);
+    const localMyList = getUserExtras(req.user!.id).myList;
+    // Combine both sources, preferring Supabase
+    const allMyList = [...new Set([...supabaseMyList.map(m => m.movie_id), ...localMyList])];
+    res.json({ movieIds: allMyList });
+  } catch (error) {
+    console.error('[MyList] Error fetching from Supabase, using local:', error);
+    res.json({ movieIds: getUserExtras(req.user!.id).myList });
+  }
 });
 
-authRouter.post("/api/my-list", requireAuth, (req: AuthedRequest, res) => {
+authRouter.post("/api/my-list", requireAuth, async (req: AuthedRequest, res) => {
   const { movieId } = req.body || {};
   if (!movieId) {
     res.status(400).json({ error: "movieId is required." });
@@ -930,6 +1086,8 @@ authRouter.post("/api/my-list", requireAuth, (req: AuthedRequest, res) => {
     res.status(413).json({ error: "List storage full (2GB limit). Remove items from My List, Favorites, or Watchlist to free space." });
     return;
   }
+  
+  // Add to local db for compatibility
   const exists = (db.data.my_list || []).some((w) => w.user_id === userId && w.movie_id === movieId);
   if (!exists) {
     if (!db.data.my_list) db.data.my_list = [];
@@ -941,14 +1099,34 @@ authRouter.post("/api/my-list", requireAuth, (req: AuthedRequest, res) => {
     });
     db.save();
   }
+  
+  // Also sync to Supabase
+  try {
+    await addToMyList(userId, movieId);
+  } catch (error) {
+    console.error('[MyList] Error syncing to Supabase:', error);
+    // Continue anyway since local db was updated
+  }
+  
   res.status(201).json({ ok: true });
 });
 
-authRouter.delete("/api/my-list/:movieId", requireAuth, (req: AuthedRequest, res) => {
+authRouter.delete("/api/my-list/:movieId", requireAuth, async (req: AuthedRequest, res) => {
   const userId = req.user!.id;
   const movieId = Number(req.params.movieId);
+  
+  // Remove from local db
   db.data.my_list = (db.data.my_list || []).filter((w) => !(w.user_id === userId && w.movie_id === movieId));
   db.save();
+  
+  // Also remove from Supabase
+  try {
+    await removeFromMyList(userId, movieId);
+  } catch (error) {
+    console.error('[MyList] Error removing from Supabase:', error);
+    // Continue anyway since local db was updated
+  }
+  
   res.json({ ok: true });
 });
 
@@ -956,8 +1134,18 @@ authRouter.delete("/api/my-list/:movieId", requireAuth, (req: AuthedRequest, res
 // WATCHLIST (continue watching — derived from history, read-only via API)
 // ---------------------------------------------------------------------------
 
-authRouter.get("/api/watchlist", requireAuth, (req: AuthedRequest, res) => {
-  res.json({ movieIds: getUserExtras(req.user!.id).watchlist });
+authRouter.get("/api/watchlist", requireAuth, async (req: AuthedRequest, res) => {
+  // Try to get from Supabase first, fall back to local db
+  try {
+    const supabaseWatchlist = await getUserWatchlist(req.user!.id);
+    const localWatchlist = getUserExtras(req.user!.id).watchlist;
+    // Combine both sources, preferring Supabase
+    const allWatchlist = [...new Set([...supabaseWatchlist.map(w => w.movie_id), ...localWatchlist])];
+    res.json({ movieIds: allWatchlist });
+  } catch (error) {
+    console.error('[Watchlist] Error fetching from Supabase, using local:', error);
+    res.json({ movieIds: getUserExtras(req.user!.id).watchlist });
+  }
 });
 
 authRouter.post("/api/watchlist", requireAuth, (req: AuthedRequest, res) => {
@@ -1133,11 +1321,21 @@ authRouter.get("/api/download-apk", async (_req, res) => {
 // FAVORITES
 // ---------------------------------------------------------------------------
 
-authRouter.get("/api/favorites", requireAuth, (req: AuthedRequest, res) => {
-  res.json({ movieIds: getUserExtras(req.user!.id).favorites });
+authRouter.get("/api/favorites", requireAuth, async (req: AuthedRequest, res) => {
+  // Try to get from Supabase first, fall back to local db
+  try {
+    const supabaseFavorites = await getUserFavorites(req.user!.id);
+    const localFavorites = getUserExtras(req.user!.id).favorites;
+    // Combine both sources, preferring Supabase
+    const allFavorites = [...new Set([...supabaseFavorites.map(f => f.movie_id), ...localFavorites])];
+    res.json({ movieIds: allFavorites });
+  } catch (error) {
+    console.error('[Favorites] Error fetching from Supabase, using local:', error);
+    res.json({ movieIds: getUserExtras(req.user!.id).favorites });
+  }
 });
 
-authRouter.post("/api/favorites", requireAuth, (req: AuthedRequest, res) => {
+authRouter.post("/api/favorites", requireAuth, async (req: AuthedRequest, res) => {
   const { movieId } = req.body || {};
   if (!movieId) {
     res.status(400).json({ error: "movieId is required." });
@@ -1149,19 +1347,41 @@ authRouter.post("/api/favorites", requireAuth, (req: AuthedRequest, res) => {
     res.status(413).json({ error: "List storage full (2GB limit). Remove items to free space." });
     return;
   }
+  
+  // Add to local db for compatibility
   const exists = db.data.favorites.some((f) => f.user_id === userId && f.movie_id === movieId);
   if (!exists) {
     db.data.favorites.push({ user_id: userId, movie_id: movieId, added_at: new Date().toISOString() });
     db.save();
   }
+  
+  // Also sync to Supabase
+  try {
+    await addToFavorites(userId, movieId);
+  } catch (error) {
+    console.error('[Favorites] Error syncing to Supabase:', error);
+    // Continue anyway since local db was updated
+  }
+  
   res.status(201).json({ ok: true });
 });
 
-authRouter.delete("/api/favorites/:movieId", requireAuth, (req: AuthedRequest, res) => {
+authRouter.delete("/api/favorites/:movieId", requireAuth, async (req: AuthedRequest, res) => {
   const userId = req.user!.id;
   const movieId = Number(req.params.movieId);
+  
+  // Remove from local db
   db.data.favorites = db.data.favorites.filter((f) => !(f.user_id === userId && f.movie_id === movieId));
   db.save();
+  
+  // Also remove from Supabase
+  try {
+    await removeFromFavorites(userId, movieId);
+  } catch (error) {
+    console.error('[Favorites] Error removing from Supabase:', error);
+    // Continue anyway since local db was updated
+  }
+  
   res.json({ ok: true });
 });
 

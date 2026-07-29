@@ -3,7 +3,7 @@
     {
       "id": "c4fec432-3b68-4787-ad9b-fd60f79a7227",
       "email": "allkikisweb@gmail.com",
-      "password_hash": "$2a$12$qZjWe0OZt8dnsY58Pbsl1OLGd.UGGVozw/JovH0fLcgNrYWM4hhB.",
+      "password_hash": "$2a$12$UdjhyU5jXvt6tzyfvddLJea/L.N16fnQg1IeVp/pMRdbIHRloIckK",
       "name": "Cinemax Admin",
       "avatar": "cartoon:orion",
       "banner": "",
@@ -12,7 +12,7 @@
       "status": "active",
       "preferences": "{\"autoplayNext\":true,\"autoplayTrailers\":true,\"defaultQuality\":\"Auto\",\"subtitleLanguage\":\"Off\",\"audioLanguage\":\"English\",\"notifyNewReleases\":true,\"notifyRecommendations\":false,\"matureContentLock\":false,\"appLanguage\":\"English\"}",
       "created_at": "2026-07-27T13:47:41.141Z",
-      "updated_at": "2026-07-27T13:47:41.141Z"
+      "updated_at": "2026-07-29T05:10:08.934Z"
     }
   ],
   "watchlist": [],
@@ -23,7 +23,188 @@
   "notifications": [],
   "comments": [],
   "ads": [],
-  "activity_logs": [],
+  "activity_logs": [
+    {
+      "id": "86542ef1-06e0-4811-afa7-bbbaed4d143b",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:12.925Z"
+    },
+    {
+      "id": "ce9e89e2-dd4d-4137-81fd-ada210b95463",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:12.941Z"
+    },
+    {
+      "id": "1b46c6ac-a94a-49e9-b4c8-80eb3c7e4254",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:16.877Z"
+    },
+    {
+      "id": "9c84eb7b-2394-4fbb-a3e4-8a6f0f193387",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:16.884Z"
+    },
+    {
+      "id": "59422fe7-9aa2-4d2f-ae33-82dc2df1632d",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:19.487Z"
+    },
+    {
+      "id": "45d718e4-ce37-45b7-b2e7-edc48f538cd8",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:19.858Z"
+    },
+    {
+      "id": "142c499f-ad7e-4995-a5e5-1399bc22b08a",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:24.157Z"
+    },
+    {
+      "id": "3e77a671-3ae0-4d89-abae-8b68321723c7",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:24.176Z"
+    },
+    {
+      "id": "3defbfc9-761f-4da7-b882-62b7049e1e39",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:33.038Z"
+    },
+    {
+      "id": "ed6e0842-85fc-47ca-b4e7-46705b562c24",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:10:33.055Z"
+    },
+    {
+      "id": "00c686b3-63d3-4673-9122-bffb718c16ec",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:11:42.160Z"
+    },
+    {
+      "id": "3370afe1-4ba3-4a32-a139-3ac56c8764e7",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:12:11.505Z"
+    },
+    {
+      "id": "79bfa547-8915-4623-a7bf-a4db2235ad75",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:15:25.975Z"
+    },
+    {
+      "id": "16878f35-14dc-4fc1-a542-c37fec81bde6",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:15:55.207Z"
+    },
+    {
+      "id": "27271437-bec1-475f-b2f4-6d9ce4f69a5b",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:16:30.779Z"
+    },
+    {
+      "id": "7663d84f-7ba4-4825-ab65-759df8bc99e4",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:19:49.858Z"
+    },
+    {
+      "id": "3f58aec9-ce20-4433-8b71-0afb5d6d321a",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:19:59.128Z"
+    },
+    {
+      "id": "1f780324-cfb6-4436-8d3b-a3cb868c94bd",
+      "user_id": "dca75115-de0f-49ff-b190-2d6012e4901b",
+      "actor_email": "allkikisweb@gmail.com",
+      "action": "supabase_oauth_sync",
+      "target": "user_account",
+      "meta": "{\"supabase_id\":\"dca75115-de0f-49ff-b190-2d6012e4901b\",\"hasOnboarding\":false}",
+      "ip_address": "::1",
+      "created_at": "2026-07-29T05:19:59.158Z"
+    }
+  ],
   "category_overrides": [],
   "site_settings": {
     "siteName": "Cinemax",
@@ -163,6 +344,187 @@
   "custom_content_seq": 0,
   "support_inquiries": [],
   "gens_access": [],
-  "ai_chat_history": [],
+  "ai_chat_history": [
+    {
+      "id": "0db35f0f-bda2-42b0-9996-b67111cc45ad",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "g",
+      "engine": "system",
+      "tokens_estimate": 1,
+      "created_at": "2026-07-28T17:48:54.745Z"
+    },
+    {
+      "id": "a8e2a097-6a3a-432a-ac81-88b2cdc68ff6",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?",
+      "engine": "system",
+      "tokens_estimate": 56,
+      "created_at": "2026-07-28T17:48:54.748Z"
+    },
+    {
+      "id": "4fcd6f52-9f90-4229-823d-1773def4679c",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "hi",
+      "engine": "system",
+      "tokens_estimate": 1,
+      "created_at": "2026-07-28T17:49:22.147Z"
+    },
+    {
+      "id": "e5d54b7e-7a20-44ce-a83c-2b885e911b13",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?",
+      "engine": "system",
+      "tokens_estimate": 56,
+      "created_at": "2026-07-28T17:49:22.149Z"
+    },
+    {
+      "id": "6ba6f7ab-713b-411a-9fba-9237ac050c87",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "hi",
+      "engine": "system",
+      "tokens_estimate": 1,
+      "created_at": "2026-07-28T17:52:36.884Z"
+    },
+    {
+      "id": "3aecea01-4296-468c-ba98-05f47feb5dcc",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?",
+      "engine": "system",
+      "tokens_estimate": 56,
+      "created_at": "2026-07-28T17:52:36.888Z"
+    },
+    {
+      "id": "c43ec011-feea-4ede-8298-6efd777a02d1",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "Recommend a mind-bending sci-fi movie",
+      "engine": "system",
+      "tokens_estimate": 10,
+      "created_at": "2026-07-28T17:53:01.517Z"
+    },
+    {
+      "id": "ba30f7b7-1d80-42b6-bc88-fd913090648e",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?",
+      "engine": "system",
+      "tokens_estimate": 56,
+      "created_at": "2026-07-28T17:53:01.519Z"
+    },
+    {
+      "id": "ff2d875d-4481-4af3-b85c-f5a0724a4e9c",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "h",
+      "engine": "system",
+      "tokens_estimate": 1,
+      "created_at": "2026-07-28T17:55:29.190Z"
+    },
+    {
+      "id": "959c2ace-00c3-4353-95f4-618756e273e8",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?",
+      "engine": "system",
+      "tokens_estimate": 56,
+      "created_at": "2026-07-28T17:55:29.220Z"
+    },
+    {
+      "id": "662979cb-8822-48d9-b646-ab91031cb2f1",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "What should I watch tonight?",
+      "engine": "system",
+      "tokens_estimate": 7,
+      "created_at": "2026-07-28T17:56:46.845Z"
+    },
+    {
+      "id": "7f713276-aa8b-4312-b431-3bb3dea31eb5",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?",
+      "engine": "system",
+      "tokens_estimate": 56,
+      "created_at": "2026-07-28T17:56:46.990Z"
+    },
+    {
+      "id": "c697332c-87cc-42e2-a483-45522638ff4c",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "What should I watch tonight?",
+      "engine": "system",
+      "tokens_estimate": 7,
+      "created_at": "2026-07-28T17:59:16.322Z"
+    },
+    {
+      "id": "6fc37cb5-df62-4ef2-b06e-1f2a814fbc8c",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?",
+      "engine": "system",
+      "tokens_estimate": 56,
+      "created_at": "2026-07-28T17:59:16.338Z"
+    },
+    {
+      "id": "6b4a2f9a-3f75-4a0d-8ff3-73abbb0746b2",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "What should I watch tonight?",
+      "engine": "system",
+      "tokens_estimate": 7,
+      "created_at": "2026-07-28T23:52:39.463Z"
+    },
+    {
+      "id": "c859d8b5-748a-45e7-a84a-d329884d30e1",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?",
+      "engine": "system",
+      "tokens_estimate": 56,
+      "created_at": "2026-07-28T23:52:39.510Z"
+    },
+    {
+      "id": "692fc71d-e23b-4758-a4fd-e443039b6e4c",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "What should I watch tonight?",
+      "engine": "system",
+      "tokens_estimate": 7,
+      "created_at": "2026-07-29T02:10:44.729Z"
+    },
+    {
+      "id": "45afa82a-ba48-4427-838b-3a9a6714f0a6",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "I'm currently running in basic mode. The administrator needs to configure AI API keys (Gemini or OpenAI) for full AI capabilities. In the meantime, I can help you with basic navigation and search. What would you like to do?",
+      "engine": "system",
+      "tokens_estimate": 56,
+      "created_at": "2026-07-29T02:10:44.784Z"
+    }
+  ],
   "ai_memory": []
 }

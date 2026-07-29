@@ -639,6 +639,34 @@ adminRouter.put("/api/admin/ai/settings", (req: AuthedRequest, res) => {
   res.json({ settings: db.data.site_settings });
 });
 
+adminRouter.put("/api/admin/ai/api-keys", (req: AuthedRequest, res) => {
+  const { gemini, openai } = req.body || {};
+  if (gemini !== undefined) db.data.site_settings.apiKeys.gemini = String(gemini).trim();
+  if (openai !== undefined) db.data.site_settings.apiKeys.openai = String(openai).trim();
+  db.save();
+  logActivity(req.user!.email, "ai.api_keys", "API Keys", { 
+    geminiUpdated: !!gemini, 
+    openaiUpdated: !!openai 
+  });
+  res.json({ 
+    apiKeys: {
+      gemini: db.data.site_settings.apiKeys.gemini ? "••••••••" : "",
+      openai: db.data.site_settings.apiKeys.openai ? "••••••••" : "",
+    }
+  });
+});
+
+adminRouter.get("/api/admin/ai/api-keys", (req: AuthedRequest, res) => {
+  res.json({ 
+    apiKeys: {
+      gemini: db.data.site_settings.apiKeys.gemini ? "••••••••" : "",
+      openai: db.data.site_settings.apiKeys.openai ? "••••••••" : "",
+      hasGemini: !!db.data.site_settings.apiKeys.gemini,
+      hasOpenai: !!db.data.site_settings.apiKeys.openai,
+    }
+  });
+});
+
 adminRouter.post("/api/admin/ai/memory", (req: AuthedRequest, res) => {
   const title = String(req.body?.title || "").trim();
   const content = String(req.body?.content || "").trim();

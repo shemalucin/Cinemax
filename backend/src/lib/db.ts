@@ -166,7 +166,7 @@ export interface DbAiChatHistoryItem {
   user_name: string | null;
   role: "user" | "assistant";
   message: string;
-  engine: "openai" | "grok" | "gemini" | "groq" | "system";
+  engine: "openai" | "grok" | "gemini" | "groq" | "system" | "fallback";
   tokens_estimate: number;
   created_at: string;
 }
