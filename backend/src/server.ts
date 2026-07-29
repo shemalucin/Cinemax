@@ -15,7 +15,6 @@ import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 import { authRouter } from "./routes/website.js";
 import { adminRouter } from "./routes/admin.js";
-import ttsRouter from "./routes/tts.js";
 import helpdeskVoiceRouter from "./routes/helpdeskVoice.js";
 import { seedAdminUser, getUserById, getOptionalUserId, AuthedRequest, isAdminEmail } from "./lib/auth.js";
 import { connectDB } from "../config/db.js";
@@ -141,7 +140,6 @@ app.get("/api/test/mailer", async (_req, res) => {
 
 app.use(authRouter);
 app.use(adminRouter);
-app.use(ttsRouter);
 app.use(helpdeskVoiceRouter);
 
 
