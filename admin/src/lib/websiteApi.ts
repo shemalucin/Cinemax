@@ -279,6 +279,43 @@ export const websiteApi = {
   notifyUser: (body: { userId: string; title: string; message: string; type?: string }) =>
     request('/api/admin/notifications/user', { method: 'POST', body: JSON.stringify(body) }),
 
+  // Admin "Video" section — uploads a standalone video and notifies every
+  // user ("Admin added a video"); clicking that notification on the site
+  // opens the player and autoplays this exact file.
+  getVideos: () => request<{ videos: any[] }>('/api/admin/videos'),
+  uploadVideo: async (file: File, title: string, description: string): Promise<{ video: any }> => {
+    const token = getToken();
+    const form = new FormData();
+    form.append('video', file);
+    form.append('title', title);
+    form.append('description', description);
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/api/admin/videos`, {
+        method: 'POST',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: form,
+      });
+    } catch {
+      throw apiConnectionError();
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
+    return data;
+  },
+  deleteVideo: (id: string, deleteEverywhere: boolean = false) => 
+    request(`/api/admin/videos/${id}${deleteEverywhere ? '?deleteEverywhere=true' : ''}`, { method: 'DELETE' }),
+
+  // Video comments
+  getVideoComments: (videoId: string) => request(`/api/admin/videos/${videoId}/comments`),
+  replyToVideoComment: (videoId: string, commentId: string, reply: string) =>
+    request(`/api/admin/videos/${videoId}/comments/${commentId}/reply`, {
+      method: 'PUT',
+      body: JSON.stringify({ reply }),
+    }),
+  deleteVideoComment: (videoId: string, commentId: string) =>
+    request(`/api/admin/videos/${videoId}/comments/${commentId}`, { method: 'DELETE' }),
+
   /** Secure portal URL — same endpoint the main website uses for admin handoff. */
   getAdminPortalUrl: () => request<{ url: string }>('/api/auth/admin-portal-url'),
 };

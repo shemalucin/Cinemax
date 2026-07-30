@@ -13,6 +13,7 @@ interface TopbarProps {
 
 const titles: Record<PageKey, { title: string; crumb: string }> = {
   dashboard:  { title: 'Dashboard',           crumb: 'Overview' },
+  videos:     { title: 'Videos',              crumb: 'Content / Videos' },
   movies:     { title: 'Movies',              crumb: 'Content / Movies' },
   tvshows:    { title: 'TV Shows',            crumb: 'Content / TV Shows' },
   catalog:    { title: 'Catalog Curation',    crumb: 'Content / Curation' },
@@ -32,7 +33,7 @@ const titles: Record<PageKey, { title: string; crumb: string }> = {
 };
 
 export default function Topbar({ page, search, onSearch, onMenu, adminUser }: TopbarProps) {
-  const { title, crumb } = titles[page];
+  const { title, crumb } = titles[page] || { title: 'Admin Panel', crumb: 'Dashboard Overview' };
   const showSearch = ['movies', 'tvshows', 'users', 'comments', 'messages', 'inquiries'].includes(page);
   const [apiLive, setApiLive] = useState<boolean | null>(null);
 

@@ -13,6 +13,7 @@ import ApiKeys from './pages/ApiKeys';
 import ContentPages from './pages/ContentPages';
 import Inquiries from './pages/Inquiries';
 import Advertisements from './pages/Advertisements';
+import Videos from './pages/Videos';
 import Notifications from './pages/Notifications';
 import ActivityLogs from './pages/ActivityLogs';
 import Catalog from './pages/Catalog';
@@ -31,6 +32,7 @@ export type PageKey =
   | 'inquiries'
   | 'comments'
   | 'advertisements'
+  | 'videos'
   | 'notifications'
   | 'activitylogs'
   | 'gensaccess'
@@ -135,6 +137,7 @@ export default function App() {
       case 'inquiries': return <Inquiries search={search} />;
       case 'comments':  return <Comments search={search} />;
       case 'advertisements': return <Advertisements />;
+      case 'videos': return <Videos />;
       case 'notifications': return <Notifications />;
       case 'activitylogs': return <ActivityLogs />;
       case 'gensaccess': return <GensAccess />;

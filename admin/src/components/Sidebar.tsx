@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Film, Tv, Users, Tag, MessageSquare, Settings,
   X, Clapperboard, ChevronRight, LogOut, Mail, ShieldCheck, ExternalLink, Key, Layout, Inbox,
-  Megaphone, Bell, Activity, Sparkles, Heart, Bot,
+  Megaphone, Bell, Activity, Sparkles, Heart, Bot, Video,
 } from 'lucide-react';
 import type { AdminUser, PageKey } from '../App';
 import { clearAdminSession } from '../pages/Login';
@@ -38,6 +38,7 @@ const navGroups = [
       { key: 'catalog' as PageKey, label: 'Catalog Curation', icon: Sparkles },
       { key: 'genres' as PageKey, label: 'Genres & Categories', icon: Tag },
       { key: 'contentpages' as PageKey, label: 'Content Pages', icon: Layout },
+      { key: 'videos' as PageKey, label: 'Video', icon: Video },
     ],
   },
   {
