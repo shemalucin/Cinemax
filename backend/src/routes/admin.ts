@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import multer from "multer";
 import db, { DbCustomContent } from "../lib/db";
+import { broadcastChatEvent } from "../lib/chatRealtime";
 import {
   publicUser,
   getUserById,
@@ -1055,15 +1056,222 @@ adminRouter.delete("/api/admin/content/:id/video", (req: AuthedRequest, res) => 
   res.json({ item });
 });
 
+// ---------------------------------------------------------------------------
+// ADMIN "VIDEO" BROADCAST SECTION — separate from per-title video uploads
+// above. The admin uploads a standalone video announcement here; every user
+// on the site immediately gets a "Admin added a video" notification (one
+// DbNotification row per user, so it shows up in their existing
+// notification center / unread badge), and any user currently online gets
+// it pushed instantly over the realtime stream (see chatRealtime.ts +
+// GET /api/notifications/stream in website.ts). Clicking the notification
+// on the site opens the video player and autoplays this exact file.
+// ---------------------------------------------------------------------------
+
+adminRouter.get("/api/admin/videos", (_req, res) => {
+  const videos = [...db.data.admin_videos].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  res.json({ videos });
+});
+
+adminRouter.post("/api/admin/videos", videoUpload.single("video"), (req: AuthedRequest & { file?: UploadedFile }, res) => {
+  const { title, description } = req.body || {};
+  if (!title || !String(title).trim()) {
+    res.status(400).json({ error: "A title is required." });
+    return;
+  }
+  if (!req.file) {
+    res.status(400).json({ error: "No video file was uploaded." });
+    return;
+  }
+
+  const videoUrl = `/uploads/videos/${req.file.filename}`;
+  const id = crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+  const cleanTitle = String(title).trim();
+  const cleanDescription = String(description || "").trim();
+
+  const record = {
+    id,
+    title: cleanTitle,
+    description: cleanDescription,
+    video_url: videoUrl,
+    thumbnail: null,
+    created_at: nowIso,
+    created_by: req.user!.email,
+    notified_users: db.data.users.length,
+  };
+  db.data.admin_videos.unshift(record);
+
+  // Fan out a notification to every registered user. Kept as one row per
+  // user (matching how every other notification already works in this
+  // app) rather than a "broadcast" pseudo-row, so unread counts, mark-as-
+  // read, and clear-all all keep working per user without special-casing.
+  const notifTitle = "Admin added a video";
+  const notifMessage = cleanDescription
+    ? `"${cleanTitle}" — ${cleanDescription}`
+    : `A new video "${cleanTitle}" was just posted. Tap to watch.`;
+  for (const u of db.data.users) {
+    db.data.notifications.push({
+      id: crypto.randomUUID(),
+      user_id: u.id,
+      type: "video",
+      title: notifTitle,
+      message: notifMessage,
+      read: 0,
+      created_at: nowIso,
+      video_url: videoUrl,
+      video_title: cleanTitle,
+      video_thumbnail: null,
+    });
+  }
+  db.save();
+
+  // Push to anyone currently connected so it appears without a refresh.
+  broadcastChatEvent("video_notification_created", {
+    title: notifTitle,
+    message: notifMessage,
+    videoUrl,
+    videoTitle: cleanTitle,
+    createdAt: nowIso,
+  });
+
+  logActivity(req.user!.email, "video.broadcast", cleanTitle, { id, notifiedUsers: record.notified_users });
+  res.status(201).json({ video: record });
+});
+
+adminRouter.delete("/api/admin/videos/:id", (req: AuthedRequest, res) => {
+  const video = db.data.admin_videos.find((v) => v.id === req.params.id);
+  if (!video) {
+    res.status(404).json({ error: "Video not found." });
+    return;
+  }
+  
+  const deleteEverywhere = req.query.deleteEverywhere === "true";
+  
+  if (deleteEverywhere) {
+    // Delete video file and remove from admin videos
+    const oldPath = path.join(process.cwd(), video.video_url.replace(/^\//, ""));
+    fs.unlink(oldPath, () => {});
+    db.data.admin_videos = db.data.admin_videos.filter((v) => v.id !== req.params.id);
+    
+    // Remove all notifications related to this video
+    const initialNotificationCount = db.data.notifications.length;
+    db.data.notifications = db.data.notifications.filter((n) => 
+      !(n.type === "video" && n.video_id === video.id)
+    );
+    const removedNotifications = initialNotificationCount - db.data.notifications.length;
+    
+    logActivity(req.user!.email, "video.delete_everywhere", video.title, { 
+      id: video.id, 
+      removedNotifications 
+    });
+  } else {
+    // Delete from admin only - mark as deleted but keep file accessible
+    db.data.admin_videos = db.data.admin_videos.filter((v) => v.id !== req.params.id);
+    
+    // Remove all notifications related to this video
+    const initialNotificationCount = db.data.notifications.length;
+    db.data.notifications = db.data.notifications.filter((n) => 
+      !(n.type === "video" && n.video_id === video.id)
+    );
+    const removedNotifications = initialNotificationCount - db.data.notifications.length;
+    
+    logActivity(req.user!.email, "video.delete_admin_only", video.title, { 
+      id: video.id, 
+      removedNotifications 
+    });
+  }
+  
+  db.save();
+  res.json({ ok: true, deletedEverywhere: deleteEverywhere });
+});
+
 adminRouter.delete("/api/admin/content/:id", (req: AuthedRequest, res) => {
   const item = db.data.custom_content.find((c) => c.id === req.params.id);
   if (item?.video_url) {
     const oldPath = path.join(process.cwd(), item.video_url.replace(/^\//, ""));
     fs.unlink(oldPath, () => {});
   }
+  
+  // Remove all notifications related to this content item
+  const initialNotificationCount = db.data.notifications.length;
+  db.data.notifications = db.data.notifications.filter((n) => 
+    !(n.type === "content" && n.content_id === item?.id)
+  );
+  const removedNotifications = initialNotificationCount - db.data.notifications.length;
+  
   db.data.custom_content = db.data.custom_content.filter((c) => c.id !== req.params.id);
   db.save();
-  if (item) logActivity(req.user!.email, "content.delete", item.title, { id: item.id });
+  
+  if (item) {
+    logActivity(req.user!.email, "content.delete", item.title, { 
+      id: item.id, 
+      numeric_id: item.numeric_id,
+      removedNotifications 
+    });
+  }
+  res.json({ ok: true, removedNotifications });
+});
+
+// ---------------------------------------------------------------------------
+// VIDEO COMMENTS
+// ---------------------------------------------------------------------------
+
+adminRouter.get("/api/admin/videos/:videoId/comments", (req: AuthedRequest, res) => {
+  const video = db.data.admin_videos.find((v) => v.id === req.params.videoId);
+  if (!video) {
+    res.status(404).json({ error: "Video not found." });
+    return;
+  }
+  const comments = db.data.video_comments.filter((c) => c.video_id === req.params.videoId);
+  res.json({ comments: comments.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) });
+});
+
+adminRouter.put("/api/admin/videos/:videoId/comments/:commentId/reply", (req: AuthedRequest, res) => {
+  const video = db.data.admin_videos.find((v) => v.id === req.params.videoId);
+  if (!video) {
+    res.status(404).json({ error: "Video not found." });
+    return;
+  }
+  const comment = db.data.video_comments.find((c) => c.id === req.params.commentId);
+  if (!comment) {
+    res.status(404).json({ error: "Comment not found." });
+    return;
+  }
+  if (comment.video_id !== req.params.videoId) {
+    res.status(400).json({ error: "Comment does not belong to this video." });
+    return;
+  }
+  const { reply } = req.body || {};
+  if (!reply || !String(reply).trim()) {
+    res.status(400).json({ error: "Reply text is required." });
+    return;
+  }
+  comment.admin_reply = String(reply).trim();
+  comment.admin_reply_at = new Date().toISOString();
+  comment.updated_at = new Date().toISOString();
+  db.save();
+  logActivity(req.user!.email, "video_comment.reply", comment.text, { videoId: video.id, commentId: comment.id });
+  res.json({ comment });
+});
+
+adminRouter.delete("/api/admin/videos/:videoId/comments/:commentId", (req: AuthedRequest, res) => {
+  const video = db.data.admin_videos.find((v) => v.id === req.params.videoId);
+  if (!video) {
+    res.status(404).json({ error: "Video not found." });
+    return;
+  }
+  const comment = db.data.video_comments.find((c) => c.id === req.params.commentId);
+  if (!comment) {
+    res.status(404).json({ error: "Comment not found." });
+    return;
+  }
+  if (comment.video_id !== req.params.videoId) {
+    res.status(400).json({ error: "Comment does not belong to this video." });
+    return;
+  }
+  db.data.video_comments = db.data.video_comments.filter((c) => c.id !== req.params.commentId);
+  db.save();
+  logActivity(req.user!.email, "video_comment.delete", comment.text, { videoId: video.id, commentId: comment.id });
   res.json({ ok: true });
 });
 

@@ -88,6 +88,36 @@ export interface DbNotification {
   message: string;
   read: number;
   created_at: string;
+  // Present when type === "video": lets the client pop the player open and
+  // autoplay this exact file the moment the notification is clicked.
+  video_url?: string;
+  video_title?: string;
+  video_thumbnail?: string | null;
+}
+
+export interface DbAdminVideo {
+  id: string;
+  title: string;
+  description: string;
+  video_url: string;
+  thumbnail: string | null;
+  created_at: string;
+  created_by: string;
+  notified_users: number;
+}
+
+export interface DbVideoComment {
+  id: string;
+  video_id: string;
+  video_title: string;
+  user_id: string;
+  user_name: string;
+  user_avatar: string | null;
+  text: string;
+  admin_reply: string | null;
+  admin_reply_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DbComment {
@@ -349,6 +379,8 @@ interface DbSchema {
   gens_access: DbGensAccessItem[];
   ai_chat_history: DbAiChatHistoryItem[];
   ai_memory: DbAiMemoryItem[];
+  admin_videos: DbAdminVideo[];
+  video_comments: DbVideoComment[];
 }
 
 function defaultSiteSettings(): DbSiteSettings {
@@ -445,6 +477,8 @@ function emptySchema(): DbSchema {
     gens_access: [],
     ai_chat_history: [],
     ai_memory: [],
+    admin_videos: [],
+    video_comments: [],
   };
 }
 
@@ -457,6 +491,8 @@ function mergeSchema(parsed: any): DbSchema {
   if (!merged.ai_memory) merged.ai_memory = [];
   if (!merged.my_list) merged.my_list = [];
   if (!merged.downloads) merged.downloads = [];
+  if (!merged.admin_videos) merged.admin_videos = [];
+  if (!merged.video_comments) merged.video_comments = [];
   if (merged.watchlist?.length && merged.my_list.length === 0) {
     for (const w of merged.watchlist) {
       if (!merged.my_list.some((m) => m.user_id === w.user_id && m.movie_id === w.movie_id)) {

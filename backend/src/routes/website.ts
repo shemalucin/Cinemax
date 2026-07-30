@@ -500,6 +500,90 @@ authRouter.get("/api/comments/movie/:movieId", (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// VIDEO COMMENTS API — handle posting and retrieving comments for admin videos
+// ---------------------------------------------------------------------------
+
+// Get all admin videos (for past videos section)
+authRouter.get("/api/admin-videos", (req, res) => {
+  try {
+    const videos = db.data.admin_videos || [];
+    // Sort by created_at descending (newest first)
+    const sortedVideos = videos.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    res.json({ videos: sortedVideos });
+  } catch (error) {
+    console.error("Error fetching admin videos:", error);
+    res.status(500).json({ error: "Failed to fetch admin videos" });
+  }
+});
+
+// Get comments for a specific admin video
+authRouter.get("/api/videos/:videoId/comments", (req, res) => {
+  const { videoId } = req.params;
+  const video = db.data.admin_videos.find((v) => v.id === videoId);
+  
+  if (!video) {
+    res.status(404).json({ error: "Video not found" });
+    return;
+  }
+
+  try {
+    const comments = db.data.video_comments
+      .filter((c) => c.video_id === videoId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    res.json({ comments, videoTitle: video.title });
+  } catch (error) {
+    console.error("Error fetching video comments:", error);
+    res.status(500).json({ error: "Failed to fetch comments" });
+  }
+});
+
+// Post a comment for an admin video
+authRouter.post("/api/videos/:videoId/comments", (req: AuthedRequest, res) => {
+  const { videoId } = req.params;
+  const { text } = req.body;
+  const user = req.user;
+
+  if (!user) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+
+  const video = db.data.admin_videos.find((v) => v.id === videoId);
+  if (!video) {
+    res.status(404).json({ error: "Video not found" });
+    return;
+  }
+
+  if (!text || !String(text).trim()) {
+    res.status(400).json({ error: "Comment text is required" });
+    return;
+  }
+
+  const newComment = {
+    id: crypto.randomUUID(),
+    video_id: videoId,
+    video_title: video.title,
+    user_id: user.id,
+    user_name: user.name,
+    user_avatar: user.avatar || null,
+    text: String(text).trim(),
+    admin_reply: null,
+    admin_reply_at: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  db.data.video_comments.push(newComment);
+  db.save();
+  logActivity(user.email, "video_comment.create", newComment.text, { videoId, commentId: newComment.id }, user.id, req.ip);
+
+  res.status(201).json({ comment: newComment });
+});
+
 // Post a new comment
 authRouter.post("/api/comments", requireAuth, rateLimit({ name: "post-comment", max: 10, windowMs: 15 * 60 * 1000 }), (req: AuthedRequest, res) => {
   const { movieId, content } = req.body || {};
@@ -1387,7 +1471,18 @@ authRouter.get("/api/notifications", requireAuth, (req: AuthedRequest, res) => {
   const notifications = db.data.notifications
     .filter((n) => n.user_id === req.user!.id)
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-    .slice(0, 50);
+    .slice(0, 50)
+    .map((n) => ({
+      id: n.id,
+      type: n.type,
+      title: n.title,
+      message: n.message,
+      read: n.read,
+      created_at: n.created_at,
+      video_url: n.video_url || undefined,
+      video_title: n.video_title || undefined,
+      video_thumbnail: n.video_thumbnail || undefined,
+    }));
   res.json({ notifications });
 });
 
@@ -1880,6 +1975,29 @@ authRouter.get("/api/chat/stream", (req: AuthedRequest, res) => {
   req.on("close", () => {
     unregisterChatClient(clientId);
     clearPresence(clientId);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NOTIFICATIONS STREAM — lightweight SSE channel any signed-in tab can open
+// to receive realtime pushes (currently: "Admin added a video"). Kept
+// separate from /api/chat/stream so the notification bell doesn't depend on
+// the live-chat panel being open, but reuses the exact same client registry
+// under the hood — a video broadcast from the admin panel just calls
+// broadcastChatEvent("video_notification_created", ...) and every open tab
+// on every registered stream (this one and /api/chat/stream) gets it.
+// ---------------------------------------------------------------------------
+authRouter.get("/api/notifications/stream", (req: AuthedRequest, res) => {
+  const clientId = `notif-${String(req.query.clientId || crypto.randomUUID())}`;
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+  registerChatClient(clientId, res);
+  res.write(`retry: 2500\n\n`);
+  res.write(`event: ready\ndata: ${JSON.stringify({ clientId })}\n\n`);
+  req.on("close", () => {
+    unregisterChatClient(clientId);
   });
 });
 

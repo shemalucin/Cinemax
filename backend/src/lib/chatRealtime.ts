@@ -11,7 +11,8 @@ type ChatStreamEventName =
   | "direct_message_deleted"
   | "message_reaction_updated"
   | "chat_meta_updated"
-  | "activity";
+  | "activity"
+  | "video_notification_created";
 
 export interface ChatStreamEnvelope<T = unknown> {
   event: ChatStreamEventName;

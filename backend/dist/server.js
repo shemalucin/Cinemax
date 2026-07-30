@@ -2,12 +2,6 @@ var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-}) : x)(function(x) {
-  if (typeof require !== "undefined") return require.apply(this, arguments);
-  throw Error('Dynamic require of "' + x + '" is not supported');
-});
 var __esm = (fn, res) => function __init() {
   return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
@@ -117,7 +111,9 @@ function emptySchema() {
     support_inquiries: [],
     gens_access: [],
     ai_chat_history: [],
-    ai_memory: []
+    ai_memory: [],
+    admin_videos: [],
+    video_comments: []
   };
 }
 function mergeSchema(parsed) {
@@ -129,6 +125,8 @@ function mergeSchema(parsed) {
   if (!merged.ai_memory) merged.ai_memory = [];
   if (!merged.my_list) merged.my_list = [];
   if (!merged.downloads) merged.downloads = [];
+  if (!merged.admin_videos) merged.admin_videos = [];
+  if (!merged.video_comments) merged.video_comments = [];
   if (merged.watchlist?.length && merged.my_list.length === 0) {
     for (const w of merged.watchlist) {
       if (!merged.my_list.some((m) => m.user_id === w.user_id && m.movie_id === w.movie_id)) {
@@ -1429,6 +1427,68 @@ var init_website = __esm({
         res.status(500).json({ error: "Failed to fetch comments" });
       }
     });
+    authRouter.get("/api/admin-videos", (req, res) => {
+      try {
+        const videos = db_default.data.admin_videos || [];
+        const sortedVideos = videos.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        res.json({ videos: sortedVideos });
+      } catch (error) {
+        console.error("Error fetching admin videos:", error);
+        res.status(500).json({ error: "Failed to fetch admin videos" });
+      }
+    });
+    authRouter.get("/api/videos/:videoId/comments", (req, res) => {
+      const { videoId } = req.params;
+      const video = db_default.data.admin_videos.find((v) => v.id === videoId);
+      if (!video) {
+        res.status(404).json({ error: "Video not found" });
+        return;
+      }
+      try {
+        const comments = db_default.data.video_comments.filter((c) => c.video_id === videoId).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        res.json({ comments, videoTitle: video.title });
+      } catch (error) {
+        console.error("Error fetching video comments:", error);
+        res.status(500).json({ error: "Failed to fetch comments" });
+      }
+    });
+    authRouter.post("/api/videos/:videoId/comments", (req, res) => {
+      const { videoId } = req.params;
+      const { text } = req.body;
+      const user = req.user;
+      if (!user) {
+        res.status(401).json({ error: "Authentication required" });
+        return;
+      }
+      const video = db_default.data.admin_videos.find((v) => v.id === videoId);
+      if (!video) {
+        res.status(404).json({ error: "Video not found" });
+        return;
+      }
+      if (!text || !String(text).trim()) {
+        res.status(400).json({ error: "Comment text is required" });
+        return;
+      }
+      const newComment = {
+        id: crypto3.randomUUID(),
+        video_id: videoId,
+        video_title: video.title,
+        user_id: user.id,
+        user_name: user.name,
+        user_avatar: user.avatar || null,
+        text: String(text).trim(),
+        admin_reply: null,
+        admin_reply_at: null,
+        created_at: (/* @__PURE__ */ new Date()).toISOString(),
+        updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      db_default.data.video_comments.push(newComment);
+      db_default.save();
+      logActivity(user.email, "video_comment.create", newComment.text, { videoId, commentId: newComment.id }, user.id, req.ip);
+      res.status(201).json({ comment: newComment });
+    });
     authRouter.post("/api/comments", requireAuth, rateLimit({ name: "post-comment", max: 10, windowMs: 15 * 60 * 1e3 }), (req, res) => {
       const { movieId, content } = req.body || {};
       const userId = req.user.id;
@@ -2139,7 +2199,17 @@ var init_website = __esm({
       res.json({ ok: true });
     });
     authRouter.get("/api/notifications", requireAuth, (req, res) => {
-      const notifications = db_default.data.notifications.filter((n) => n.user_id === req.user.id).sort((a, b) => a.created_at < b.created_at ? 1 : -1).slice(0, 50);
+      const notifications = db_default.data.notifications.filter((n) => n.user_id === req.user.id).sort((a, b) => a.created_at < b.created_at ? 1 : -1).slice(0, 50).map((n) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        read: n.read,
+        created_at: n.created_at,
+        video_url: n.video_url || void 0,
+        video_title: n.video_title || void 0,
+        video_thumbnail: n.video_thumbnail || void 0
+      }));
       res.json({ notifications });
     });
     authRouter.post("/api/notifications", requireAuth, (req, res) => {
@@ -2389,6 +2459,24 @@ data: ${JSON.stringify({ clientId })}
       req.on("close", () => {
         unregisterChatClient(clientId);
         clearPresence(clientId);
+      });
+    });
+    authRouter.get("/api/notifications/stream", (req, res) => {
+      const clientId = `notif-${String(req.query.clientId || crypto3.randomUUID())}`;
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders?.();
+      registerChatClient(clientId, res);
+      res.write(`retry: 2500
+
+`);
+      res.write(`event: ready
+data: ${JSON.stringify({ clientId })}
+
+`);
+      req.on("close", () => {
+        unregisterChatClient(clientId);
       });
     });
     authRouter.post("/api/chat/presence", (req, res) => {
@@ -2726,6 +2814,7 @@ var adminRouter, UPLOADS_DIR, videoUpload;
 var init_admin = __esm({
   "src/routes/admin.ts"() {
     init_db();
+    init_chatRealtime();
     init_auth();
     adminRouter = Router2();
     UPLOADS_DIR = path2.join(process.cwd(), "uploads", "videos");
@@ -3623,6 +3712,99 @@ var init_admin = __esm({
       logActivity(req.user.email, "content.video_remove", item.title, { id: item.id });
       res.json({ item });
     });
+    adminRouter.get("/api/admin/videos", (_req, res) => {
+      const videos = [...db_default.data.admin_videos].sort((a, b) => a.created_at < b.created_at ? 1 : -1);
+      res.json({ videos });
+    });
+    adminRouter.post("/api/admin/videos", videoUpload.single("video"), (req, res) => {
+      const { title, description } = req.body || {};
+      if (!title || !String(title).trim()) {
+        res.status(400).json({ error: "A title is required." });
+        return;
+      }
+      if (!req.file) {
+        res.status(400).json({ error: "No video file was uploaded." });
+        return;
+      }
+      const videoUrl = `/uploads/videos/${req.file.filename}`;
+      const id = crypto4.randomUUID();
+      const nowIso2 = (/* @__PURE__ */ new Date()).toISOString();
+      const cleanTitle = String(title).trim();
+      const cleanDescription = String(description || "").trim();
+      const record = {
+        id,
+        title: cleanTitle,
+        description: cleanDescription,
+        video_url: videoUrl,
+        thumbnail: null,
+        created_at: nowIso2,
+        created_by: req.user.email,
+        notified_users: db_default.data.users.length
+      };
+      db_default.data.admin_videos.unshift(record);
+      const notifTitle = "Admin added a video";
+      const notifMessage = cleanDescription ? `"${cleanTitle}" \u2014 ${cleanDescription}` : `A new video "${cleanTitle}" was just posted. Tap to watch.`;
+      for (const u of db_default.data.users) {
+        db_default.data.notifications.push({
+          id: crypto4.randomUUID(),
+          user_id: u.id,
+          type: "video",
+          title: notifTitle,
+          message: notifMessage,
+          read: 0,
+          created_at: nowIso2,
+          video_url: videoUrl,
+          video_title: cleanTitle,
+          video_thumbnail: null
+        });
+      }
+      db_default.save();
+      broadcastChatEvent("video_notification_created", {
+        title: notifTitle,
+        message: notifMessage,
+        videoUrl,
+        videoTitle: cleanTitle,
+        createdAt: nowIso2
+      });
+      logActivity(req.user.email, "video.broadcast", cleanTitle, { id, notifiedUsers: record.notified_users });
+      res.status(201).json({ video: record });
+    });
+    adminRouter.delete("/api/admin/videos/:id", (req, res) => {
+      const video = db_default.data.admin_videos.find((v) => v.id === req.params.id);
+      if (!video) {
+        res.status(404).json({ error: "Video not found." });
+        return;
+      }
+      const deleteEverywhere = req.query.deleteEverywhere === "true";
+      if (deleteEverywhere) {
+        const oldPath = path2.join(process.cwd(), video.video_url.replace(/^\//, ""));
+        fs2.unlink(oldPath, () => {
+        });
+        db_default.data.admin_videos = db_default.data.admin_videos.filter((v) => v.id !== req.params.id);
+        const initialNotificationCount = db_default.data.notifications.length;
+        db_default.data.notifications = db_default.data.notifications.filter(
+          (n) => !(n.type === "video" && n.video_id === video.id)
+        );
+        const removedNotifications = initialNotificationCount - db_default.data.notifications.length;
+        logActivity(req.user.email, "video.delete_everywhere", video.title, {
+          id: video.id,
+          removedNotifications
+        });
+      } else {
+        db_default.data.admin_videos = db_default.data.admin_videos.filter((v) => v.id !== req.params.id);
+        const initialNotificationCount = db_default.data.notifications.length;
+        db_default.data.notifications = db_default.data.notifications.filter(
+          (n) => !(n.type === "video" && n.video_id === video.id)
+        );
+        const removedNotifications = initialNotificationCount - db_default.data.notifications.length;
+        logActivity(req.user.email, "video.delete_admin_only", video.title, {
+          id: video.id,
+          removedNotifications
+        });
+      }
+      db_default.save();
+      res.json({ ok: true, deletedEverywhere: deleteEverywhere });
+    });
     adminRouter.delete("/api/admin/content/:id", (req, res) => {
       const item = db_default.data.custom_content.find((c) => c.id === req.params.id);
       if (item?.video_url) {
@@ -3630,9 +3812,76 @@ var init_admin = __esm({
         fs2.unlink(oldPath, () => {
         });
       }
+      const initialNotificationCount = db_default.data.notifications.length;
+      db_default.data.notifications = db_default.data.notifications.filter(
+        (n) => !(n.type === "content" && n.content_id === item?.id)
+      );
+      const removedNotifications = initialNotificationCount - db_default.data.notifications.length;
       db_default.data.custom_content = db_default.data.custom_content.filter((c) => c.id !== req.params.id);
       db_default.save();
-      if (item) logActivity(req.user.email, "content.delete", item.title, { id: item.id });
+      if (item) {
+        logActivity(req.user.email, "content.delete", item.title, {
+          id: item.id,
+          numeric_id: item.numeric_id,
+          removedNotifications
+        });
+      }
+      res.json({ ok: true, removedNotifications });
+    });
+    adminRouter.get("/api/admin/videos/:videoId/comments", (req, res) => {
+      const video = db_default.data.admin_videos.find((v) => v.id === req.params.videoId);
+      if (!video) {
+        res.status(404).json({ error: "Video not found." });
+        return;
+      }
+      const comments = db_default.data.video_comments.filter((c) => c.video_id === req.params.videoId);
+      res.json({ comments: comments.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) });
+    });
+    adminRouter.put("/api/admin/videos/:videoId/comments/:commentId/reply", (req, res) => {
+      const video = db_default.data.admin_videos.find((v) => v.id === req.params.videoId);
+      if (!video) {
+        res.status(404).json({ error: "Video not found." });
+        return;
+      }
+      const comment = db_default.data.video_comments.find((c) => c.id === req.params.commentId);
+      if (!comment) {
+        res.status(404).json({ error: "Comment not found." });
+        return;
+      }
+      if (comment.video_id !== req.params.videoId) {
+        res.status(400).json({ error: "Comment does not belong to this video." });
+        return;
+      }
+      const { reply } = req.body || {};
+      if (!reply || !String(reply).trim()) {
+        res.status(400).json({ error: "Reply text is required." });
+        return;
+      }
+      comment.admin_reply = String(reply).trim();
+      comment.admin_reply_at = (/* @__PURE__ */ new Date()).toISOString();
+      comment.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+      db_default.save();
+      logActivity(req.user.email, "video_comment.reply", comment.text, { videoId: video.id, commentId: comment.id });
+      res.json({ comment });
+    });
+    adminRouter.delete("/api/admin/videos/:videoId/comments/:commentId", (req, res) => {
+      const video = db_default.data.admin_videos.find((v) => v.id === req.params.videoId);
+      if (!video) {
+        res.status(404).json({ error: "Video not found." });
+        return;
+      }
+      const comment = db_default.data.video_comments.find((c) => c.id === req.params.commentId);
+      if (!comment) {
+        res.status(404).json({ error: "Comment not found." });
+        return;
+      }
+      if (comment.video_id !== req.params.videoId) {
+        res.status(400).json({ error: "Comment does not belong to this video." });
+        return;
+      }
+      db_default.data.video_comments = db_default.data.video_comments.filter((c) => c.id !== req.params.commentId);
+      db_default.save();
+      logActivity(req.user.email, "video_comment.delete", comment.text, { videoId: video.id, commentId: comment.id });
       res.json({ ok: true });
     });
     adminRouter.get("/api/admin/social-media", (_req, res) => {
@@ -3737,122 +3986,9 @@ var init_admin = __esm({
   }
 });
 
-// src/routes/tts.ts
+// src/routes/helpdeskVoice.ts
 import express from "express";
 import dotenv from "dotenv";
-var router, ttsClient, VOICE_MAPPING, tts_default;
-var init_tts = __esm({
-  "src/routes/tts.ts"() {
-    dotenv.config();
-    router = express.Router();
-    ttsClient = null;
-    try {
-      const { google } = __require("@google-cloud/text-to-speech");
-      if (process.env.GOOGLE_CLOUD_PROJECT_ID) {
-        ttsClient = new google.textToSpeech.TextToSpeechClient({
-          keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE || void 0,
-          projectId: process.env.GOOGLE_CLOUD_PROJECT_ID
-        });
-      }
-    } catch (error) {
-      console.log("Google Cloud TTS not available, will use fallback");
-    }
-    VOICE_MAPPING = {
-      "rw-RW": "rw-RW-Standard-A",
-      // Kinyarwanda
-      "en-US": "en-US-Standard-C",
-      // English (US)
-      "fr-FR": "fr-FR-Standard-A",
-      // French
-      "default": "en-US-Standard-C"
-    };
-    router.post("/tts", async (req, res) => {
-      try {
-        const { text, language = "en-US", voiceGender = "neutral", speakingRate = 1, pitch = 0 } = req.body;
-        if (!text || typeof text !== "string") {
-          return res.status(400).json({ error: "Text is required and must be a string" });
-        }
-        if (!ttsClient) {
-          return res.status(503).json({
-            error: "Google Cloud TTS not configured. Please use browser TTS fallback.",
-            fallback: true
-          });
-        }
-        const voiceName = VOICE_MAPPING[language] || VOICE_MAPPING["default"];
-        const request = {
-          input: { text },
-          voice: {
-            languageCode: language.split("-")[0],
-            // Extract language code (e.g., 'en' from 'en-US')
-            name: voiceName,
-            ssmlGender: voiceGender
-          },
-          audioConfig: {
-            audioEncoding: "MP3",
-            speakingRate,
-            pitch
-          }
-        };
-        const [response] = await ttsClient.synthesizeSpeech(request);
-        const audioContent = response.audioContent;
-        const audioBase64 = Buffer.from(audioContent).toString("base64");
-        res.json({
-          audioContent: audioBase64,
-          contentType: "audio/mpeg",
-          language,
-          voice: voiceName
-        });
-      } catch (error) {
-        console.error("TTS error:", error);
-        if (error.code === 7 || error.message?.includes("UNAUTHENTICATED")) {
-          return res.status(401).json({
-            error: "Google Cloud authentication failed. Check your credentials.",
-            fallback: true
-          });
-        }
-        if (error.code === 8 || error.message?.includes("RESOURCE_EXHAUSTED")) {
-          return res.status(429).json({
-            error: "Google Cloud TTS quota exceeded. Please try again later.",
-            fallback: true
-          });
-        }
-        res.status(500).json({
-          error: "Failed to generate speech. Please try again.",
-          fallback: true
-        });
-      }
-    });
-    router.get("/tts/voices", async (req, res) => {
-      try {
-        if (!ttsClient) {
-          return res.status(503).json({
-            error: "Google Cloud TTS not configured",
-            availableVoices: VOICE_MAPPING
-          });
-        }
-        const [result] = await ttsClient.listVoices({});
-        const voices = result.voices?.map((voice) => ({
-          name: voice.name,
-          languageCodes: voice.languageCodes,
-          gender: voice.ssmlGender,
-          naturalSampleRate: voice.naturalSampleRateHertz
-        })) || [];
-        res.json({ voices });
-      } catch (error) {
-        console.error("List voices error:", error);
-        res.status(500).json({
-          error: "Failed to list voices",
-          availableVoices: VOICE_MAPPING
-        });
-      }
-    });
-    tts_default = router;
-  }
-});
-
-// src/routes/helpdeskVoice.ts
-import express2 from "express";
-import dotenv2 from "dotenv";
 function buildSystemContext(req, body) {
   return {
     // Platform information
@@ -3964,12 +4100,12 @@ function buildSystemContext(req, body) {
     } : null
   };
 }
-var router2, helpdeskVoice_default;
+var router, helpdeskVoice_default;
 var init_helpdeskVoice = __esm({
   "src/routes/helpdeskVoice.ts"() {
-    dotenv2.config();
-    router2 = express2.Router();
-    router2.post("/helpdesk-voice", async (req, res) => {
+    dotenv.config();
+    router = express.Router();
+    router.post("/helpdesk-voice", async (req, res) => {
       try {
         const { message, history = [], context: clientContext, language = "en" } = req.body;
         if (!message || typeof message !== "string") {
@@ -4047,7 +4183,7 @@ CURRENT LANGUAGE: ${language === "rw" ? "Kinyarwanda" : language === "fr" ? "Fre
         });
       }
     });
-    router2.post("/helpdesk/context", async (req, res) => {
+    router.post("/helpdesk/context", async (req, res) => {
       try {
         const { currentPage, error, additionalContext } = req.body;
         res.json({
@@ -4064,7 +4200,7 @@ CURRENT LANGUAGE: ${language === "rw" ? "Kinyarwanda" : language === "fr" ? "Fre
         res.status(500).json({ error: "Failed to update context" });
       }
     });
-    helpdeskVoice_default = router2;
+    helpdeskVoice_default = router;
   }
 });
 
@@ -4086,8 +4222,15 @@ async function connectDB() {
     return;
   }
   didAttemptConnection = true;
-  await mongoose2.connect(mongoUri);
-  console.log("[db] Connected to MongoDB.");
+  try {
+    await mongoose2.connect(mongoUri, { serverSelectionTimeoutMS: 8e3 });
+    console.log("[db] Connected to MongoDB.");
+  } catch (err) {
+    console.error(
+      "[db] Failed to connect to MongoDB \u2014 check that MONGO_URI is a valid connection string. Continuing with the file-backed store so the site/admin panel stay online.",
+      err
+    );
+  }
 }
 var didAttemptConnection;
 var init_db2 = __esm({
@@ -4310,10 +4453,10 @@ var init_tmdbMatch = __esm({
 // src/server.ts
 var server_exports = {};
 import "dotenv/config";
-import dotenv3 from "dotenv";
+import dotenv2 from "dotenv";
 import path3 from "path";
 import { fileURLToPath } from "url";
-import express3 from "express";
+import express2 from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { GoogleGenAI } from "@google/genai";
@@ -4727,7 +4870,6 @@ var init_server = __esm({
   "src/server.ts"() {
     init_website();
     init_admin();
-    init_tts();
     init_helpdeskVoice();
     init_auth();
     init_db2();
@@ -4737,11 +4879,11 @@ var init_server = __esm({
     init_tmdbMatch();
     try {
       const __dir = path3.dirname(fileURLToPath(import.meta.url));
-      dotenv3.config({ path: path3.resolve(__dir, "../config/.env") });
-      dotenv3.config({ path: path3.resolve(__dir, "../../config/.env") });
+      dotenv2.config({ path: path3.resolve(__dir, "../config/.env") });
+      dotenv2.config({ path: path3.resolve(__dir, "../../config/.env") });
     } catch {
     }
-    app = express3();
+    app = express2();
     app.set("trust proxy", 1);
     allowedOrigins = buildAllowedOrigins();
     console.log("[cors] Allowed origins:", allowedOrigins);
@@ -4763,11 +4905,11 @@ var init_server = __esm({
     };
     app.use(cors(corsOptions));
     app.options("*", cors(corsOptions));
-    app.use(express3.json({ limit: "20mb" }));
+    app.use(express2.json({ limit: "20mb" }));
     app.use(cookieParser());
-    app.use("/uploads", express3.static(path3.join(process.cwd(), "uploads")));
+    app.use("/uploads", express2.static(path3.join(process.cwd(), "uploads")));
     adminDistPath = path3.join(process.cwd(), "public", "admin");
-    app.use("/admin", express3.static(adminDistPath));
+    app.use("/admin", express2.static(adminDistPath));
     app.get("/admin/*", (req, res, next) => {
       if (req.path.startsWith("/admin/api")) return next();
       res.sendFile(path3.join(adminDistPath, "index.html"), (err) => {
@@ -4798,7 +4940,6 @@ var init_server = __esm({
     });
     app.use(authRouter);
     app.use(adminRouter);
-    app.use(tts_default);
     app.use(helpdeskVoice_default);
     app.post("/api/assistant", async (req, res) => {
       try {
