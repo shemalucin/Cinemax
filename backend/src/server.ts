@@ -58,6 +58,8 @@ function isAllowedOrigin(origin: string): boolean {
   // Render HTTPS origins prevents hosted login from breaking with a browser
   // "Failed to fetch" when the service name differs from render.yaml.
   if (/^https:\/\/[a-z0-9-]+\.onrender\.com$/i.test(normalized)) return true;
+  // Allow InfinityFree domains for the website
+  if (/^https:\/\/[a-z0-9-]+\.site\.je$/i.test(normalized)) return true;
   return false;
 }
 

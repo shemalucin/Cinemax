@@ -4477,6 +4477,7 @@ function isAllowedOrigin(origin) {
   const normalized = origin.replace(/\/+$/, "");
   if (allowedOrigins.includes(normalized)) return true;
   if (/^https:\/\/[a-z0-9-]+\.onrender\.com$/i.test(normalized)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.site\.je$/i.test(normalized)) return true;
   return false;
 }
 function getApiKey(name) {
