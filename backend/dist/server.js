@@ -909,7 +909,6 @@ var init_chatRealtime = __esm({
 import { Router } from "express";
 import crypto3 from "crypto";
 import { Readable } from "stream";
-import { OAuth2Client } from "google-auth-library";
 import FormData from "form-data";
 function getUserExtras(userId) {
   const myList = (db_default.data.my_list || []).filter((w) => w.user_id === userId).sort((a, b) => a.added_at < b.added_at ? 1 : -1).map((w) => w.movie_id);
@@ -1326,82 +1325,6 @@ var init_website = __esm({
       setSessionCookie(res, token);
       logActivity(user.email, "login", "session", {}, user.id, req.ip);
       res.json({ user: userWithExtras(user), token });
-    });
-    authRouter.post("/api/auth/google", rateLimit({ name: "google-auth", max: 10, windowMs: 15 * 60 * 1e3 }), async (req, res) => {
-      const { credential } = req.body || {};
-      if (!credential) {
-        res.status(400).json({ error: "Google credential is required." });
-        return;
-      }
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      if (!clientId) {
-        res.status(500).json({ error: "Google OAuth is not configured on the server." });
-        return;
-      }
-      try {
-        const client = new OAuth2Client(clientId);
-        const ticket = await client.verifyIdToken({
-          idToken: credential,
-          audience: clientId
-        });
-        const payload = ticket.getPayload();
-        if (!payload || !payload.email) {
-          res.status(400).json({ error: "Invalid Google token." });
-          return;
-        }
-        const email = String(payload.email).toLowerCase().trim();
-        const name = payload.name || "Google User";
-        const googlePicture = payload.picture || null;
-        let user = getUserByEmail(email);
-        if (user) {
-          if (user.status === "banned") {
-            res.status(403).json({ error: "This account has been banned. Contact support if you believe this is a mistake." });
-            return;
-          }
-          if (user.status === "suspended") {
-            res.status(403).json({ error: "This account is currently suspended." });
-            return;
-          }
-          if (googlePicture && (!user.avatar || user.avatar.startsWith("cartoon:"))) {
-            user.avatar = googlePicture;
-            db_default.save();
-          }
-          const token = signToken(user.id);
-          setSessionCookie(res, token);
-          logActivity(user.email, "google_login", "session", {}, user.id, req.ip);
-          res.json({ user: userWithExtras(user), token });
-        } else {
-          const newUser = {
-            id: crypto3.randomUUID(),
-            email,
-            name: String(name).trim(),
-            password: "",
-            // No password for Google accounts
-            avatar: googlePicture || "cartoon:nova",
-            banner: "https://images.unsplash.com/photo-1574375927938-d5a98e8edd86?q=80&w=1200&auto=format&fit=crop",
-            role: "user",
-            status: "active",
-            subscription: "Free",
-            badges: ["Member"],
-            createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-            favorites: [],
-            myList: [],
-            watchlist: [],
-            watchHistory: [],
-            preferences: {},
-            onboarding: null
-          };
-          db_default.data.users.push(newUser);
-          db_default.save();
-          const token = signToken(newUser.id);
-          setSessionCookie(res, token);
-          logActivity(newUser.email, "google_signup", "session", {}, newUser.id, req.ip);
-          res.json({ user: userWithExtras(newUser), token });
-        }
-      } catch (error) {
-        console.error("Google auth error:", error);
-        res.status(400).json({ error: "Failed to verify Google token. Please try again." });
-      }
     });
     authRouter.get("/api/comments/movie/:movieId", (req, res) => {
       const { movieId } = req.params;

@@ -188,8 +188,8 @@ app.post("/api/assistant", async (req, res) => {
     const missingKey = String(err?.message || "").toLowerCase().includes("api key");
     res.status(missingKey ? 503 : 500).json({
       error: missingKey
-        ? "AI assistant is temporarily unavailable. Please try again later."
-        : "The AI assistant is temporarily unavailable. Please try again.",
+        ? "I'm having trouble connecting right now. Please check your connection and try again."
+        : "I'm having trouble connecting right now. Please check your connection and try again.",
     });
   }
 });

@@ -3,7 +3,7 @@
     {
       "id": "c4fec432-3b68-4787-ad9b-fd60f79a7227",
       "email": "allkikisweb@gmail.com",
-      "password_hash": "$2a$12$3X2BrtIh.vvyFnakbLRu/efFi2Htp500wgZPjOHtw9w6XQtYGOI9e",
+      "password_hash": "$2a$12$uo9wK0jn8akeR.rbjBOBPO8RHuRx1d2aZmfOLgS/NmpohQUYGldWC",
       "name": "Cinemax Admin",
       "avatar": "cartoon:orion",
       "banner": "",
@@ -12,7 +12,7 @@
       "status": "active",
       "preferences": "{\"autoplayNext\":true,\"autoplayTrailers\":true,\"defaultQuality\":\"Auto\",\"subtitleLanguage\":\"Off\",\"audioLanguage\":\"English\",\"notifyNewReleases\":true,\"notifyRecommendations\":false,\"matureContentLock\":false,\"appLanguage\":\"English\"}",
       "created_at": "2026-07-27T13:47:41.141Z",
-      "updated_at": "2026-07-30T18:38:21.485Z"
+      "updated_at": "2026-07-31T01:09:21.134Z"
     },
     {
       "id": "2c53ed1e-10ad-4f41-8716-340dd385a5a6",
@@ -1213,6 +1213,66 @@
       "engine": "gemini",
       "tokens_estimate": 174,
       "created_at": "2026-07-30T18:52:25.869Z"
+    },
+    {
+      "id": "f6102afb-ea30-4052-9ed2-7a473288ec78",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "hello",
+      "engine": "system",
+      "tokens_estimate": 2,
+      "created_at": "2026-07-30T22:48:53.737Z"
+    },
+    {
+      "id": "b13d59e3-05c6-478c-b3fa-110ea439dd47",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "Greetings, cinematic explorer! I am All Kiki's, your expert guide to the universe of Cinemax.\n\nWhat grand adventure can I help you discover today? We have a galaxy of movies, TV shows, and exciting features waiting for you.\n\nRemember, signing in unlocks personalized features like **My List**, **Favorites**, and **Downloads**!",
+      "engine": "gemini",
+      "tokens_estimate": 82,
+      "created_at": "2026-07-30T22:48:53.739Z"
+    },
+    {
+      "id": "8ab187cc-14ee-410a-a2c2-12043246d0ea",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "Surprise me with something underrated",
+      "engine": "system",
+      "tokens_estimate": 10,
+      "created_at": "2026-07-30T23:05:40.188Z"
+    },
+    {
+      "id": "1639e705-0e27-4719-8b96-c161b4e1670b",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "Ah, a quest for hidden gems! I love uncovering those cinematic treasures that don't always get the spotlight they deserve. Here are a few underrated picks to surprise and delight you:\n\n*   **'Arrival' (2016)**: A thought-provoking science fiction film with incredible depth and an emotional punch, often overshadowed by flashier blockbusters.\n*   **'Whiplash' (2014)**: An intense, electrifying drama about an ambitious jazz drummer and his relentless instructor. It's a masterclass in tension and performance.\n*   **'The Handmaiden' (2016)**: A visually stunning and exquisitely plotted South Korean psychological thriller with twists that will keep you on the edge of your seat.\n*   **'Before Sunrise' (1995)**: A charming and intimate romance that feels incredibly real, following two strangers who meet on a train and spend a magical night in Vienna.\n\nI hope one of these sparks your interest!\n\n```action\nsearch\nunderrated movies\n```",
+      "engine": "gemini",
+      "tokens_estimate": 235,
+      "created_at": "2026-07-30T23:05:40.207Z"
+    },
+    {
+      "id": "5cf8068c-23cc-4e52-9953-5195adac2805",
+      "user_id": null,
+      "user_name": null,
+      "role": "user",
+      "message": "hi",
+      "engine": "system",
+      "tokens_estimate": 1,
+      "created_at": "2026-07-31T01:05:03.730Z"
+    },
+    {
+      "id": "9e93ca2c-dbec-43f4-bc0f-177784d8f3de",
+      "user_id": null,
+      "user_name": null,
+      "role": "assistant",
+      "message": "Greetings, cinematic explorer! All Kiki's here, ready to illuminate your journey through Cinemax.\n\nWhat grand adventure can I help you embark on today? Perhaps a thrilling movie, a captivating TV series, or a specific site feature? Just let me know!",
+      "engine": "gemini",
+      "tokens_estimate": 63,
+      "created_at": "2026-07-31T01:05:03.736Z"
     }
   ],
   "ai_memory": [],

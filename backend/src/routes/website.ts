@@ -1,7 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { Readable } from "stream";
-import { OAuth2Client } from "google-auth-library";
 import FormData from "form-data";
 import db, { DbChatMessage, DbDirectMessage, DbSharedMovieCard } from "../lib/db";
 import {
@@ -12,6 +11,7 @@ import {
   getUserById,
   createUser,
   verifyPassword,
+  verifyGoogleAccessToken,
   updatePasswordHash,
   signToken,
   signPortalToken,
@@ -366,47 +366,21 @@ authRouter.post("/api/auth/login", rateLimit({ name: "login", max: 8, windowMs: 
   res.json({ user: userWithExtras(user), token });
 });
 
-// ---------------------------------------------------------------------------
-// GOOGLE OAUTH SIGN-IN — accepts a Google ID token, verifies it with Google,
-// and creates/updates a user account based on the verified email.
-// ---------------------------------------------------------------------------
+authRouter.post(
+  "/api/auth/google",
+  rateLimit({ name: "google-auth", max: 10, windowMs: 15 * 60 * 1000 }),
+  async (req, res) => {
+    const { accessToken } = req.body || {};
 
-authRouter.post("/api/auth/google", rateLimit({ name: "google-auth", max: 10, windowMs: 15 * 60 * 1000 }), async (req, res) => {
-  const { credential } = req.body || {};
-  
-  if (!credential) {
-    res.status(400).json({ error: "Google credential is required." });
-    return;
-  }
-
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    res.status(500).json({ error: "Google OAuth is not configured on the server." });
-    return;
-  }
-
-  try {
-    const client = new OAuth2Client(clientId);
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: clientId,
-    });
-
-    const payload = ticket.getPayload();
-    if (!payload || !payload.email) {
-      res.status(400).json({ error: "Invalid Google token." });
+    const verified = await verifyGoogleAccessToken(accessToken);
+    if (!verified.ok) {
+      res.status(401).json({ error: verified.error });
       return;
     }
 
-    const email = String(payload.email).toLowerCase().trim();
-    const name = payload.name || "Google User";
-    const googlePicture = payload.picture || null;
-
-    // Check if user already exists
-    let user = getUserByEmail(email);
+    let user = getUserByEmail(verified.email);
 
     if (user) {
-      // Existing user - sign them in
       if (user.status === "banned") {
         res.status(403).json({ error: "This account has been banned. Contact support if you believe this is a mistake." });
         return;
@@ -415,52 +389,30 @@ authRouter.post("/api/auth/google", rateLimit({ name: "google-auth", max: 10, wi
         res.status(403).json({ error: "This account is currently suspended." });
         return;
       }
-
-      // Update avatar if Google picture is available and user doesn't have one
-      if (googlePicture && (!user.avatar || user.avatar.startsWith("cartoon:"))) {
-        user.avatar = googlePicture;
+      // Link the Google identity to the existing account on first use so
+      // future "Continue with Google" sign-ins recognize it immediately.
+      if (!user.google_id) {
+        user.google_id = verified.sub;
+        user.updated_at = new Date().toISOString();
         db.save();
       }
-
-      const token = signToken(user.id);
-      setSessionCookie(res, token);
-      logActivity(user.email, "google_login", "session", {}, user.id, req.ip);
-      res.json({ user: userWithExtras(user), token });
     } else {
-      // New user - create account
-      const newUser = {
-        id: crypto.randomUUID(),
-        email,
-        name: String(name).trim(),
-        password: "", // No password for Google accounts
-        avatar: googlePicture || "cartoon:nova",
-        banner: "https://images.unsplash.com/photo-1574375927938-d5a98e8edd86?q=80&w=1200&auto=format&fit=crop",
-        role: "user",
-        status: "active",
-        subscription: "Free",
-        badges: ["Member"],
-        createdAt: new Date().toISOString(),
-        favorites: [],
-        myList: [],
-        watchlist: [],
-        watchHistory: [],
-        preferences: {},
-        onboarding: null,
-      };
-
-      db.data.users.push(newUser);
-      db.save();
-
-      const token = signToken(newUser.id);
-      setSessionCookie(res, token);
-      logActivity(newUser.email, "google_signup", "session", {}, newUser.id, req.ip);
-      res.json({ user: userWithExtras(newUser), token });
+      // First time we've seen this email — create an account for them.
+      // The password is a random value the user will never need: Google
+      // remains their only way in unless they later set a password via
+      // "Forgot Password".
+      const randomPassword = crypto.randomBytes(24).toString("hex");
+      user = createUser(verified.email, randomPassword, verified.name, undefined, verified.sub, verified.picture);
     }
-  } catch (error: any) {
-    console.error("Google auth error:", error);
-    res.status(400).json({ error: "Failed to verify Google token. Please try again." });
+
+    const token = signToken(user.id);
+    setSessionCookie(res, token);
+
+    logActivity(user.email, "login", "session", { method: "google" }, user.id, req.ip);
+
+    res.json({ user: userWithExtras(user), token });
   }
-});
+);
 
 // ---------------------------------------------------------------------------
 // COMMENTS API — handle posting and retrieving comments for movies

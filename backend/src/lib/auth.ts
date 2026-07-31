@@ -91,6 +91,64 @@ export function isStrongPassword(password: string): boolean {
   );
 }
 
+/**
+ * Verifies a Google OAuth access token (from @react-oauth/google's
+ * useGoogleLogin on the frontend) directly with Google, rather than
+ * trusting anything the browser sends us.
+ *
+ * Two calls: tokeninfo confirms the token is real, unexpired, and was
+ * actually issued for OUR client (the `aud`/`audience` check — without
+ * this, a token minted for a completely different app would be accepted).
+ * userinfo then fetches the profile fields we need to create/match the
+ * account.
+ */
+export async function verifyGoogleAccessToken(
+  accessToken: string
+): Promise<{ ok: true; email: string; name: string; picture?: string; sub: string } | { ok: false; error: string }> {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    return { ok: false, error: "Google sign-in is not configured on the server." };
+  }
+  if (!accessToken || typeof accessToken !== "string") {
+    return { ok: false, error: "Missing Google access token." };
+  }
+
+  try {
+    const tokenInfoRes = await fetch(
+      `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${encodeURIComponent(accessToken)}`
+    );
+    if (!tokenInfoRes.ok) {
+      return { ok: false, error: "Invalid or expired Google session. Please try again." };
+    }
+    const tokenInfo: any = await tokenInfoRes.json();
+    if (tokenInfo.audience !== clientId && tokenInfo.issued_to !== clientId) {
+      return { ok: false, error: "Google sign-in token was not issued for this app." };
+    }
+
+    const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!userInfoRes.ok) {
+      return { ok: false, error: "Couldn't retrieve your Google profile. Please try again." };
+    }
+    const userInfo: any = await userInfoRes.json();
+    if (!userInfo.email || userInfo.email_verified === false) {
+      return { ok: false, error: "Your Google account's email isn't verified." };
+    }
+
+    return {
+      ok: true,
+      email: String(userInfo.email).toLowerCase().trim(),
+      name: userInfo.name || userInfo.given_name || userInfo.email.split("@")[0],
+      picture: userInfo.picture,
+      sub: userInfo.sub,
+    };
+  } catch (err) {
+    console.error("[auth] Google token verification failed:", err);
+    return { ok: false, error: "Couldn't verify your Google account. Please try again." };
+  }
+}
+
 export function getUserByEmail(email: string): DbUser | undefined {
   const normalized = email.toLowerCase().trim();
   return db.data.users.find((u) => u.email === normalized);
